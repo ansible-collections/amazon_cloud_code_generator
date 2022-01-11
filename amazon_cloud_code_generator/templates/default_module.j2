@@ -1,0 +1,63 @@
+{% include 'header.j2' %}
+
+# template: default_module.j2
+
+try:
+    import botocore
+except ImportError:
+    pass  # Handled by AnsibleAWSModule
+
+import json
+from ansible.module_utils.common.dict_transformations import camel_dict_to_snake_dict
+from ansible.module_utils.basic import missing_required_lib
+from ansible_collections.amazon.aws.plugins.module_utils.core import AnsibleAWSModule
+
+# from amazon.aws.module_utils.core import AnsibleAWSModule
+# from amazon.aws.module_utils.ec2 import ansible_dict_to_boto3_tag_list
+# from amazon.aws.module_utils.ec2 import boto3_tag_list_to_ansible_dict
+
+from ..module_utils.core import CloudControlResource
+
+
+def main():
+
+    argument_spec = dict(
+        client_token=dict(type='str', no_log=True),
+        state=dict(type='str', choices=['create', 'update', 'delete', 'list', 'describe'], default='create'),
+        {{arguments}}
+    )
+
+    module = AnsibleAWSModule(argument_spec=argument_spec, supports_check_mode=False)
+    cloud = CloudControlResource(module)
+
+    type_name = {{resource_type}}
+    params = dict()
+    {{params}}
+
+    state = module.params.get('state')
+
+
+'''
+We need to read the handler from the schema in the generator, and then use that to set the states available
+to that module.  So these all need to be templated.
+'''
+    if state == 'create':
+        response = cloud.create_resources(type_name, params)
+
+    if state == 'update':
+        response = cloud.update_resources(type_name, params)
+
+    if state == 'delete':
+        response = cloud.delete_resources(type_name, params)
+
+    if state == 'list':
+        response = cloud.list_resources(type_name)
+
+    if state == 'describe':
+        response = cloud.describe_resources(type_name, params)
+
+    module.exit_json(resources=response)
+
+
+if __name__ == '__main__':
+    main()
