@@ -209,6 +209,8 @@ class AnsibleModuleBase:
             #required_if=required_if,
         )
 
+        print("CONTENT", content)
+
         self.write_module(target_dir, content)
 
 
