@@ -221,25 +221,9 @@ class AnsibleModule(AnsibleModuleBase):
         super().__init__(resource, definitions)
         # TODO: We can probably do better
         self.default_operationIds = []
-
-
-class AnsibleInfoModule(AnsibleModuleBase):
-    def __init__(self, resource, definitions):
-        super().__init__(resource, definitions)
-        self.name = resource.name + "_info"
-        self.default_operationIds = ["get", "list"]
-
+    
     def parameters(self):
         return [i for i in list(super().parameters()) if i["name"] != "state"]
-
-
-class AnsibleInfoNoListModule(AnsibleInfoModule):
-    template_file = "info_no_list_module.j2"
-
-
-class AnsibleInfoListOnlyModule(AnsibleInfoModule):
-    template_file = "info_list_and_get_module.j2"
-
 
 
 class Definitions:
