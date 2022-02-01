@@ -4,13 +4,10 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 
-import json
 import copy
 import re
 import yaml
 import pkg_resources
-
-import boto3
 
 
 resources = [
@@ -159,7 +156,7 @@ def get_module_from_config(module):
     return False
 
 
-def generate_documentation(scheme):
+def generate_documentation(scheme, added_ins, next_version):
     module_name = MODULE_NAME_MAPPING[scheme["typeName"]]
     description = [scheme['description']]
     documentation = {
@@ -169,7 +166,7 @@ def generate_documentation(scheme):
         "short_description": scheme['description'],
         "options": {},
         "requirements": [],
-        # "version_added": added_ins["module"] or next_version,
+        "version_added": added_ins["module"] or next_version,
     }
     
     documentation["options"] = scheme["definitions"]
@@ -203,16 +200,6 @@ class CloudFormationWrapper:
             --type-name My::Logs::LogGroup \
             --type RESOURCE
         """
+        # TODO: include version
         response = self.client.describe_type(Type='RESOURCE', TypeName=type_name)
-        schema = response.get('Schema')
-        documentation = generate_documentation(json.loads(schema))
-        
-
-def main():
-    cloudformation = CloudFormationWrapper(boto3.client('cloudformation'))
-    for type_name in resources_test:
-        cloudformation.generate_docs(type_name)
-
-if __name__ == '__main__':
-    main()
-    
+        return response.get('Schema')

@@ -1,9 +1,252 @@
 #!/usr/bin/env python3
 
+import os
+import re
 import argparse
+from functools import lru_cache
 import pathlib
+import subprocess
+from xml.dom.minidom import Document
 import pkg_resources
 from pbr.version import VersionInfo
+import baron
+import redbaron
+import yaml
+import jinja2
+import json
+
+import boto3
+
+
+from .generator import python_type
+from .generator import generate_documentation
+from .generator import get_module_from_config
+from .generator import resources_test
+from .generator import CloudFormationWrapper
+from .generator import MODULE_NAME_MAPPING
+
+def run_git(git_dir, *args):
+    cmd = [
+        "git",
+        "--git-dir",
+        git_dir,
+    ]
+    for arg in args:
+        cmd.append(arg)
+    r = subprocess.run(cmd, text=True, capture_output=True)
+    return r.stdout.rstrip().split("\n")
+
+
+@lru_cache(maxsize=None)
+def file_by_tag(git_dir):
+    tags = run_git(git_dir, "tag")
+
+    files_by_tag = {}
+    for tag in tags:
+        files_by_tag[tag] = run_git(git_dir, "ls-tree", "-r", "--name-only", tag)
+
+    return files_by_tag
+
+
+def get_module_added_ins(module_name, git_dir):
+    added_ins = {"module": None, "options": {}}
+    module = f"plugins/modules/{module_name}.py"
+
+    for tag, files in file_by_tag(git_dir).items():
+        print("tag, files", tag, files)
+        if "rc" in tag:
+            continue
+        if module in files:
+            if not added_ins["module"]:
+                added_ins["module"] = tag
+            content = "\n".join(
+                run_git(
+                    git_dir,
+                    "cat-file",
+                    "--textconv",
+                    f"{tag}:{module}",
+                )
+            )
+            try:
+                ast_file = redbaron.RedBaron(content)
+            except baron.BaronError as e:
+                print(f"Failed to parse {tag}:plugins/modules/{module_name}.py. {e}")
+                continue
+            doc_block = ast_file.find(
+                "assignment", target=lambda x: x.dumps() == "DOCUMENTATION"
+            )
+            if not doc_block or not doc_block.value:
+                print(f"Cannot find DOCUMENTATION block for module {module_name}")
+            doc_content = yaml.safe_load(doc_block.value.to_python())
+            for option in doc_content["options"]:
+                if option not in added_ins["options"]:
+                    added_ins["options"][option] = tag
+
+    return added_ins
+
+
+def jinja2_renderer(template_file, **kwargs):
+    templateLoader = jinja2.PackageLoader("amazon_cloud_code_generator")
+    templateEnv = jinja2.Environment(loader=templateLoader)
+    template = templateEnv.get_template(template_file)
+    return template.render(kwargs)
+
+
+def _indent(text_block, indent=0):
+    result = ""
+    for l in text_block.split("\n"):
+        result += " " * indent
+        result += l
+        result += "\n"
+    return result
+
+
+def gen_arguments_py(parameters, list_index=None):
+    result = ""
+    for parameter in parameters:
+        name = normalize_parameter_name(parameter["name"])
+        values = []
+
+        if parameter.get("required"):
+            values.append("'required': True")
+
+        aliases = parameter.get("aliases")
+        if aliases:
+            values.append(f"'aliases': {aliases}")
+
+        _type = python_type(parameter["type"])
+        values.append(f"'type': '{_type}'")
+        if "enum" in parameter:
+            choices = ", ".join([f"'{i}'" for i in sorted(parameter["enum"])])
+            values.append(f"'choices': [{choices}]")
+        if python_type(parameter["type"]) == "list":
+            _elements = python_type(parameter["elements"])
+            values.append(f"'elements': '{_elements}'")
+
+        elif "default" in parameter:
+            default = parameter["default"]
+            values.append(f"'default': '{default}'")
+
+        result += f"\nargument_spec['{name}'] = "
+        result += "{" + ", ".join(values) + "}"
+    return result
+
+
+class Resource:
+    def __init__(self, name):
+        self.name = name
+        self.operations = {}
+        self.summary = {}
+
+
+class AnsibleModuleBase:
+    def __init__(self, name, definitions):
+        self.definitions = definitions
+        self.name = name
+        self.default_operationIds = None
+
+    def description(self):
+        prefered_operationId = ["get", "list", "create", "update", "delete"]
+        for operationId in prefered_operationId:
+            if operationId not in self.default_operationIds:
+                continue
+            if operationId in self.resource.summary:
+                return self.resource.summary[operationId].split("\n")[0]
+
+        for operationId in sorted(self.default_operationIds):
+            if operationId in self.resource.summary:
+                return self.resource.summary[operationId].split("\n")[0]
+
+        print(f"generic description: {self.name}")
+        return f"Handle resource of type {self.name}"
+    
+    def get_path(self):
+        return list(self.resource.operations.values())[0][1]
+
+    def is_trusted(self):
+        if get_module_from_config(self.name) is False:
+            print(f"- do not build: {self.name}")
+        else:
+            return True
+    
+    def list_index(self):
+        for i in ["get", "update", "delete"]:
+            if i not in self.resource.operations:
+                continue
+            path = self.resource.operations[i][1]
+            break
+        else:
+            return
+
+        m = re.search(r"{([-\w]+)}$", path)
+        if m:
+            return m.group(1)
+    
+    def write_module(self, target_dir, content):
+        module_dir = target_dir / "plugins" / "modules"
+        module_dir.mkdir(parents=True, exist_ok=True)
+        module_py_file = module_dir / "{name}.py".format(name=self.name)
+        module_py_file.write_text(content)
+    
+    def renderer(self, target_dir, next_version):
+
+        added_ins = get_module_added_ins(self.name, git_dir=target_dir / ".git")
+        arguments = gen_arguments_py(self.parameters(), self.list_index())
+        documentation = generate_documentation(
+                self.definitions,
+                added_ins,
+                next_version,
+        )
+
+        #required_if = self.gen_required_if(self.parameters())
+
+        content = jinja2_renderer(
+            self.template_file,
+            arguments=_indent(arguments, 4),
+            documentation=documentation,
+            list_index=self.list_index(),
+            name=self.name,
+            #required_if=required_if,
+        )
+
+        self.write_module(target_dir, content)
+
+
+class AnsibleModule(AnsibleModuleBase):
+    template_file = "default_module.j2"
+
+    def __init__(self, resource, definitions):
+        super().__init__(resource, definitions)
+        # TODO: We can probably do better
+        #self.default_operationIds = set(list(self.resource.operations.keys())) - set(
+        #    ["get", "list"]
+        #
+        # )
+
+
+class Definitions:
+    def __init__(self, data):
+        super().__init__()
+        self.definitions = data
+
+
+class Path:
+    def __init__(self, path, value):
+        super().__init__()
+        self.path = path
+        self.operations = {}
+        self.verb = {}
+        self.value = value
+
+    def summary(self, verb):
+        return self.value[verb]["summary"]
+
+    def is_tech_preview(self):
+        for verb in self.value.keys():
+            if "Technology Preview" in self.summary(verb):
+                return True
+        return False
+
 
 
 def main():
@@ -12,8 +255,8 @@ def main():
         "--target-dir",
         dest="target_dir",
         type=pathlib.Path,
-        default=pathlib.Path("amazon.cloud"),
-        help="location of the target repository (default: ./amazon.cloud)",
+        default=pathlib.Path("cloud"),
+        help="location of the target repository (default: ./cloud)",
     )
     parser.add_argument(
         "--next-version", type=str, default="TODO", help="the next major version",
@@ -21,14 +264,27 @@ def main():
     args = parser.parse_args()
 
     module_list = []
-    for json_file in ["aws-s3-bucket.json"]:
-        print("Generating modules from {}".format(json_file))
-        raw_content = pkg_resources.resource_string(
-            "amazon_cloud_code_generator", f"aws_cloudformation_schemas/{json_file}"
+    
+    for type_name in resources_test:
+        print("Generating modules")
+        cloudformation = CloudFormationWrapper(boto3.client('cloudformation'))
+        raw_content = cloudformation.generate_docs(
+            type_name
         )
-        print(raw_content)
-        # swagger_file = SwaggerFile(raw_content)
-        # resources = swagger_file.init_resources(swagger_file.paths.values())
+        
+        for type_name in resources_test:
+            json_content = json.loads(raw_content)
+            module_name = MODULE_NAME_MAPPING[json_content["typeName"]]
+
+            module = AnsibleModule(module_name, definitions=json_content["definitions"])
+
+            if module.is_trusted() and len(module.default_operationIds) > 0:
+                module.renderer(
+                    target_dir=args.target_dir, next_version=args.next_version
+                )
+                module_list.append(module.name)
+
+
 
         # for resource in resources.values():
         #     if "list" in resource.operations:
