@@ -275,7 +275,7 @@ def main():
 
             module = AnsibleModule(module_name, definitions=json_content["definitions"])
 
-            if module.is_trusted() and len(module.default_operationIds) > 0:
+            if module.is_trusted(): # and len(module.default_operationIds) > 0:
                 module.renderer(
                     target_dir=args.target_dir, next_version=args.next_version
                 )
