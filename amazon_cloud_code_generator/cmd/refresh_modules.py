@@ -407,7 +407,7 @@ def main():
     )
 
     module_utils_dir = args.target_dir / "plugins" / "module_utils"
-    module_utils_dir.mkdir(exist_ok=True)
+    module_utils_dir.mkdir(parents=True, exist_ok=True)
     vmware_rest_dest = module_utils_dir / "core.py"
     vmware_rest_dest.write_bytes(
         pkg_resources.resource_string(
