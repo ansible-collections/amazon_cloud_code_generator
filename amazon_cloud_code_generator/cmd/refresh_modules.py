@@ -218,10 +218,7 @@ class AnsibleModule(AnsibleModuleBase):
     def __init__(self, resource, definitions):
         super().__init__(resource, definitions)
         # TODO: We can probably do better
-        #self.default_operationIds = set(list(self.resource.operations.keys())) - set(
-        #    ["get", "list"]
-        #
-        # )
+        self.default_operationIds = []
 
 
 class Definitions:
