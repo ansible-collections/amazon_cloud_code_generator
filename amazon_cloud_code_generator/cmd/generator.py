@@ -6,6 +6,10 @@
 
 import json
 import copy
+import re
+import yaml
+import pkg_resources
+
 import boto3
 
 
@@ -39,6 +43,9 @@ resources = [
 ]
 
 resources_test = ["AWS::S3::Bucket"] #, "AWS::EC2::Instance", "AWS::EC2::Volume"]
+MODULE_NAME_MAPPING = {
+    "AWS::S3::Bucket": "s3_bucket",
+}
 
 
 def python_type(value):
@@ -52,91 +59,131 @@ def python_type(value):
     return TYPE_MAPPING.get(value, value)
 
 
-MODULE_NAME_MAPPING = {
-    "AWS::S3::Bucket": "s3_bucket",
-}
-
-
-def fixup(a_dict:dict, k:str, subst_dict:dict) -> dict:
-    d_copy = copy.copy(a_dict)
+def preprocess(a_dict, k, subst_dict):
+    a_dict_copy = copy.copy(a_dict)
     
-    for key in d_copy.keys():
-        if key == "type":
-            a_dict[key] = python_type(a_dict[key])
-        if key == "description":
-            a_dict[key] = [a_dict[key]]
-        if key == "enum":
-            a_dict["choices"] = sorted(a_dict["enum"])
-        if "$ref" in key:
-            lookup_param = a_dict['$ref'].split('/')[-1].strip()
-            for _, _ in subst_dict.items():
-                if subst_dict.get(lookup_param):
-                    a_dict[key] = subst_dict[lookup_param]
-        elif type(a_dict[key]) is dict:
-            fixup(a_dict[key], k, subst_dict)
-
-
-def cleanup_dict(d):
-    d_copy = copy.copy(d)
-
-    if not isinstance(d, dict):
-        return d
+    for key in a_dict_copy.keys():
+        if isinstance(a_dict[key], list):            
+            if key == "enum":
+                a_dict["choices"] = sorted(a_dict.pop(key))
     
-    for k, v in d_copy.items():
-        if k == "items":
-            existing = d[k]
-            if "$ref" in v:
-                existing = d[k]["$ref"]
-            del d[k]
-            d["elements"] = existing
-        elif k not in ("items", "properties")and isinstance(v, dict):
-            if v.get("$ref"):
-                d[k] = v.pop("$ref")
-                print("REF AFTER",d)
-        elif k == "properties":
-            d["suboptions"] = d.pop(k)
+        elif isinstance(a_dict_copy[key], dict):
+            if  "$ref" in a_dict_copy[key]:
+                lookup_param = a_dict_copy[key]['$ref'].split('/')[-1].strip()
+                for _, _ in subst_dict.items():
+                    if subst_dict.get(lookup_param):
+                        a_dict[key] = subst_dict[lookup_param]
+                    break
+            else:
+                preprocess(a_dict[key], k, subst_dict)
         else:
-            cleanup_dict(d[k])
+            if key == "type":
+                a_dict[key] = python_type(a_dict_copy[key])
+            if key == "description":
+                a_dict[key] = [a_dict_copy[key]]
+            if key == "const":
+                a_dict["defaults"] = a_dict.pop(key)
 
 
-def filter_dict(d):
+def cleanup(a_dict):
+    a_dict_copy = copy.copy(a_dict)
+
+    if not isinstance(a_dict, dict):
+        return a_dict
+    
+    for k, v in a_dict_copy.items():        
+        if k == "properties":
+            a_dict["suboptions"] = a_dict.pop(k)
+    
+        if isinstance(v, dict) and "required" in v and isinstance(v["required"], list):
+            for r in v["required"]:
+                if "properties" in a_dict[k]:
+                    a_dict[k]["properties"][r]["required"] = True
+                else:
+                    a_dict[k]["suboptions"][r]["required"] = True
+            a_dict[k].pop("required")
+
+        cleanup(a_dict_copy[k])
+
+
+def filter(a_dict):
     list_of_keys_to_remove = ["additionalProperties", "insertionOrder", "uniqueItems"]
-    if not isinstance(d, dict):
-        return d
-    return {k: v for k, v in ((k, filter_dict(v)) for k, v in d.items()) if k not in list_of_keys_to_remove}
+    if not isinstance(a_dict, dict):
+        return a_dict
+    return {k: v for k, v in ((k, filter(v)) for k, v in a_dict.items()) if k not in list_of_keys_to_remove}
+
+
+def _camel_to_snake(name, reversible=False):
+
+    def prepend_underscore_and_lower(m):
+        return '_' + m.group(0).lower()
+
+    if reversible:
+        upper_pattern = r'[A-Z]'
+    else:
+        # Cope with pluralized abbreviations such as TargetGroupARNs
+        # that would otherwise be rendered target_group_ar_ns
+        upper_pattern = r'[A-Z]{3,}s$'
+
+    s1 = re.sub(upper_pattern, prepend_underscore_and_lower, name)
+    # Handle when there was nothing before the plural_pattern
+    if s1.startswith("_") and not name.startswith("_"):
+        s1 = s1[1:]
+    if reversible:
+        return s1
+
+    # Remainder of solution seems to be https://stackoverflow.com/a/1176023
+    first_cap_pattern = r'(.)([A-Z][a-z]+)'
+    all_cap_pattern = r'([a-z0-9])([A-Z]+)'
+    s2 = re.sub(first_cap_pattern, r'\1_\2', s1)
+    return re.sub(all_cap_pattern, r'\1_\2', s2).lower()
+
+
+def camel_to_snanke(a_dict):
+    b_dict = {}
+    for k in a_dict.keys():
+        if isinstance(a_dict[k], dict):
+            b_dict[_camel_to_snake(k)] = camel_to_snanke(a_dict[k])
+        else:
+            b_dict[_camel_to_snake(k)] = a_dict[k]
+    return b_dict
+
+
+def get_module_from_config(module):
+    raw_content = pkg_resources.resource_string(
+        "amazon_cloud_code_generator", "config/modules.yaml"
+    )
+    for i in yaml.safe_load(raw_content):
+        if module in i:
+            return i[module]
+    return False
 
 
 def generate_documentation(scheme):
     module_name = MODULE_NAME_MAPPING[scheme["typeName"]]
-    #description = [scheme['description']]
+    description = [scheme['description']]
     documentation = {
         "module": module_name,
         "author": ["Ansible Cloud Team (@ansible-collections)"],
-        #"description": description,
+        "description": description,
         "short_description": scheme['description'],
         "options": {},
         "requirements": [],
-        #"version_added": added_ins["module"] or next_version,
+        # "version_added": added_ins["module"] or next_version,
     }
     
     documentation["options"] = scheme["definitions"]
-        
-    fixup(documentation, "$ref", documentation["options"])
-    cleanup_dict(documentation["options"])
-        
-    documentation = filter_dict(documentation)
-            
-        #option["subptions"] = suboptions
-        # option["description"] = description
 
-        # if parameter_info.get("type"):
-        #     option["type"] = python_type(parameter_info["type"])
-        # if parameter_info.get("enum"):
-        #     option["choices"] = sorted(parameter_info["enum"])
-        # if parameter_info.get("default"):
-        #     option["default"] = parameter_info.get("default")
+    preprocess(documentation, "$ref", documentation["options"])
+    cleanup(documentation["options"])
+        
+    documentation = filter(documentation)
+    documentation = camel_to_snanke(documentation)
 
-        # documentation["options"][parameter] = option
+    module_from_config = get_module_from_config(module_name)
+    if module_from_config and "documentation" in module_from_config:
+        for k, v in module_from_config["documentation"].items():
+            documentation[k] = v
     
     return documentation
 

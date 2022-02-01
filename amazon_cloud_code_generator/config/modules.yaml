@@ -1,0 +1,6 @@
+---
+- ec2_instance:
+- s3_bucket:
+    documentation:
+      short_description: Manage S3 buckets in AWS, DigitalOcean, Ceph, Walrus, FakeS3 and StorageGRID
+      description: Manage S3 buckets in AWS, DigitalOcean, Ceph, Walrus, FakeS3 and StorageGRID.

@@ -1,40 +1,10 @@
 #!/usr/bin/env python3
 
 import argparse
-from typing import DefaultDict
-import json
-import os
 import pathlib
 import pkg_resources
 from pbr.version import VersionInfo
-import yaml
 
-import re
-
-def _camel_to_snake(name, reversible=False):
-    # From https://github.com/ansible/ansible/blob/devel/lib/ansible/module_utils/common/dict_transformations.py
-    def prepend_underscore_and_lower(m):
-        return '_' + m.group(0).lower()
-
-    if reversible:
-        upper_pattern = r'[A-Z]'
-    else:
-        # Cope with pluralized abbreviations such as TargetGroupARNs
-        # that would otherwise be rendered target_group_ar_ns
-        upper_pattern = r'[A-Z]{3,}s$'
-
-    s1 = re.sub(upper_pattern, prepend_underscore_and_lower, name)
-    # Handle when there was nothing before the plural_pattern
-    if s1.startswith("_") and not name.startswith("_"):
-        s1 = s1[1:]
-    if reversible:
-        return s1
-
-    # Remainder of solution seems to be https://stackoverflow.com/a/1176023
-    first_cap_pattern = r'(.)([A-Z][a-z]+)'
-    all_cap_pattern = r'([a-z0-9])([A-Z]+)'
-    s2 = re.sub(first_cap_pattern, r'\1_\2', s1)
-    return re.sub(all_cap_pattern, r'\1_\2', s2).lower()
 
 def main():
     parser = argparse.ArgumentParser(description="Build the amazon.cloud modules.")
@@ -130,7 +100,7 @@ def main():
             for test in skip_list:
                 # Sanity test 'validate-modules' does not test path 'plugins/module_utils/vmware_rest.py'
                 if version in ["2.9", "2.10", "2.11"]:
-                    if f == "plugins/module_utils/vmware_rest.py":
+                    if f == "plugins/module_utils/core.py":
                         if test.startswith("validate-modules:"):
                             continue
                 # per_version_ignore_content += f"{f} {test}\n"
