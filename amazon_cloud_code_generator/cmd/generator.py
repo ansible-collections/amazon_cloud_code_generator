@@ -148,7 +148,7 @@ def camel_to_snanke(a_dict):
 
 def get_module_from_config(module):
     raw_content = pkg_resources.resource_string(
-        "amazon_cloud_code_generator", "config/modules.yaml"
+       "amazon_cloud_code_generator", "config/modules.yaml"
     )
     for i in yaml.safe_load(raw_content):
         if module in i:
@@ -156,24 +156,21 @@ def get_module_from_config(module):
     return False
 
 
-def generate_documentation(scheme, added_ins, next_version):
-    module_name = MODULE_NAME_MAPPING[scheme["typeName"]]
-    description = [scheme['description']]
+def generate_documentation(module_name, description, definitions, added_ins, next_version):
+    description = [description]
     documentation = {
         "module": module_name,
         "author": ["Ansible Cloud Team (@ansible-collections)"],
-        "description": description,
-        "short_description": scheme['description'],
-        "options": {},
+        "description": [description],
+        "short_description": [description],
+        "options": definitions,
         "requirements": [],
         "version_added": added_ins["module"] or next_version,
     }
-    
-    documentation["options"] = scheme["definitions"]
 
     preprocess(documentation, "$ref", documentation["options"])
     cleanup(documentation["options"])
-        
+
     documentation = filter(documentation)
     documentation = camel_to_snanke(documentation)
 

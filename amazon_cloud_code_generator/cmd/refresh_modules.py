@@ -18,12 +18,12 @@ import json
 import boto3
 
 
-from .generator import python_type
-from .generator import generate_documentation
-from .generator import get_module_from_config
-from .generator import resources_test
-from .generator import CloudFormationWrapper
-from .generator import MODULE_NAME_MAPPING
+from generator import python_type
+from generator import generate_documentation
+from generator import get_module_from_config
+from generator import resources_test
+from generator import CloudFormationWrapper
+from generator import MODULE_NAME_MAPPING
 
 def run_git(git_dir, *args):
     cmd = [
@@ -140,7 +140,8 @@ class Resource:
 
 
 class AnsibleModuleBase:
-    def __init__(self, name, definitions):
+    def __init__(self, name, description, definitions):
+        self.description = description
         self.definitions = definitions
         self.name = name
         self.default_operationIds = None
@@ -191,25 +192,27 @@ class AnsibleModuleBase:
     def renderer(self, target_dir, next_version):
 
         added_ins = get_module_added_ins(self.name, git_dir=target_dir / ".git")
-        arguments = gen_arguments_py(self.parameters(), self.list_index())
+        #arguments = gen_arguments_py(self.parameters(), self.list_index())
         documentation = generate_documentation(
-                self.definitions,
-                added_ins,
-                next_version,
+            self.name,
+            self.description,
+            pretty(self.definitions.definitions),
+            added_ins,
+            next_version,
         )
 
         #required_if = self.gen_required_if(self.parameters())
 
         content = jinja2_renderer(
             self.template_file,
-            arguments=_indent(arguments, 4),
+            #arguments=_indent(arguments, 4),
             documentation=documentation,
-            list_index=self.list_index(),
+            #list_index=self.list_index(),
             name=self.name,
             #required_if=required_if,
         )
 
-        print("CONTENT", content)
+        #print("CONTENT", content)
 
         self.write_module(target_dir, content)
 
@@ -217,37 +220,36 @@ class AnsibleModuleBase:
 class AnsibleModule(AnsibleModuleBase):
     template_file = "default_module.j2"
 
-    def __init__(self, resource, definitions):
-        super().__init__(resource, definitions)
+    def __init__(self, name, description, definitions):
+        super().__init__(name, description, definitions)
         # TODO: We can probably do better
         self.default_operationIds = []
     
-    def parameters(self):
-        return [i for i in list(super().parameters()) if i["name"] != "state"]
+    #def parameters(self):
+    #    return [i for i in list(super().parameters()) if i["name"] != "state"]
 
-
-class AnsibleInfoModule(AnsibleModuleBase):
-    def __init__(self, resource, definitions):
-        super().__init__(resource, definitions)
-        self.name = resource.name + "_info"
-        self.default_operationIds = ["get", "list"]
-
-    def parameters(self):
-        return [i for i in list(super().parameters()) if i["name"] != "state"]
-
-
-class AnsibleInfoNoListModule(AnsibleInfoModule):
-    template_file = "info_no_list_module.j2"
-
-
-class AnsibleInfoListOnlyModule(AnsibleInfoModule):
-    template_file = "info_list_and_get_module.j2"
 
 
 class Definitions:
-    def __init__(self, data):
-        super().__init__()
-        self.definitions = data
+    def __init__(self, type_name, definitions):
+        self.type_name = type_name
+        self.definitions = definitions
+    
+    @property
+    def type_name(self):
+        return self._type_name
+    
+    @type_name.setter
+    def type_name(self, a):
+        self._type_name = a
+       
+    @property
+    def definitions(self):
+        return self._definitions
+    
+    @definitions.setter
+    def definitions(self, a):
+        self._definitions = a
 
 
 class Path:
@@ -267,6 +269,14 @@ class Path:
                 return True
         return False
 
+def pretty(d, indent=10, result=""):
+    for key, value in d.items():
+        result += " " * indent + str(key)
+        if isinstance(value, dict):
+            result = pretty(value, indent + 2, result + "\n")
+        else:
+            result += ": " + str(value) + "\n"
+    return result
 
 
 def main():
@@ -294,15 +304,18 @@ def main():
         
         for type_name in resources_test:
             json_content = json.loads(raw_content)
-            module_name = MODULE_NAME_MAPPING[json_content["typeName"]]
+            type_name = json_content.get("typeName")
+            description = json_content.get("description")
+            module_name = MODULE_NAME_MAPPING[type_name]
+            definitions = Definitions(type_name, json_content.get("definitions"))
 
-            module = AnsibleModule(module_name, definitions=json_content["definitions"])
+            module = AnsibleModule(module_name, description=description, definitions=definitions)
 
-            #if module.is_trusted(): # and len(module.default_operationIds) > 0:
-            #    module.renderer(
-            #        target_dir=args.target_dir, next_version=args.next_version
-            #    )
-            #    module_list.append(module.name)
+            if module.is_trusted():
+                module.renderer(
+                    target_dir=args.target_dir, next_version=args.next_version
+                )
+                module_list.append(module.name)
             module_list.append(module_name)
 
 
@@ -371,7 +384,7 @@ def main():
                 "import-3.10!skip",
             ]
 
-        # per_version_ignore_content = ignore_content
+        #per_version_ignore_content = ignore_content
         for f in files:
             for test in skip_list:
                 # Sanity test 'validate-modules' does not test path 'plugins/module_utils/vmware_rest.py'
@@ -379,10 +392,10 @@ def main():
                     if f == "plugins/module_utils/core.py":
                         if test.startswith("validate-modules:"):
                             continue
-                # per_version_ignore_content += f"{f} {test}\n"
+                #per_version_ignore_content += f"{f} {test}\n"
 
-        ignore_file = ignore_dir / f"ignore-{version}.txt"
-        # ignore_file.write_text(per_version_ignore_content)
+        #ignore_file = ignore_dir / f"ignore-{version}.txt"
+        #ignore_file.write_text(per_version_ignore_content)
 
     info = VersionInfo("amazon_cloud_code_generator")
     dev_md = args.target_dir / "dev.md"
@@ -410,9 +423,15 @@ def main():
     module_utils_dir.mkdir(parents=True, exist_ok=True)
     vmware_rest_dest = module_utils_dir / "core.py"
     vmware_rest_dest.write_bytes(
-        pkg_resources.resource_string(
-            "amazon_cloud_code_generator", "module_utils/core.py"
-        )
+       pkg_resources.resource_string(
+           "amazon_cloud_code_generator", "module_utils/core.py"
+       )
+    )
+    vmware_rest_dest = module_utils_dir / "utils.py"
+    vmware_rest_dest.write_bytes(
+       pkg_resources.resource_string(
+           "amazon_cloud_code_generator", "module_utils/utils.py"
+       )
     )
 
 

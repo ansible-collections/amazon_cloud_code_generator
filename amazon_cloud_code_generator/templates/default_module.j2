@@ -28,17 +28,18 @@ def main():
     cloud = CloudControlResource(module)
 
     type_name = {{resource_type}}
+    params = {{params}}
+
     # The DesiredState we pass to AWS must be a JSONArray of non-null values
     params_to_set = {k: v for k, v in params.items() if v is not None}
     desired_state = json.dumps(params_to_set)
 
     state = module.params.get('state')
 
-    identifier = params['BucketName'] # identifier of the resource
+    identifier = {{identifier}} # identifier of the resource
 
     if state == 'list':
         result = cloud.list_resources(type_name)
-        changed = False
 
     if state == 'create':
         result = cloud.create_resource(type_name, identifier, desired_state)            
@@ -49,7 +50,7 @@ def main():
     if state == 'delete':
       result = cloud.delete_resource(type_name, identifier)
 
-    module.exit_json(resources=response)
+    module.exit_json(**result)
 
 
 if __name__ == '__main__':
