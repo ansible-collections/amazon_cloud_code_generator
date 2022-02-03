@@ -6,7 +6,6 @@ import argparse
 from functools import lru_cache
 import pathlib
 import subprocess
-from xml.dom.minidom import Document
 import pkg_resources
 from pbr.version import VersionInfo
 import baron
@@ -14,16 +13,16 @@ import redbaron
 import yaml
 import jinja2
 import json
-
 import boto3
 
 
-from generator import python_type
-from generator import generate_documentation
-from generator import get_module_from_config
-from generator import resources_test
-from generator import CloudFormationWrapper
-from generator import MODULE_NAME_MAPPING
+from .generator import CloudFormationWrapper
+from .generator import RESOURCES
+from .generator import MODULE_NAME_MAPPING
+from .generator import python_type
+from .generator import generate_documentation
+from .generator import get_module_from_config
+
 
 def run_git(git_dir, *args):
     cmd = [
@@ -101,7 +100,27 @@ def _indent(text_block, indent=0):
     return result
 
 
-def gen_arguments_py(parameters, list_index=None):
+def ansible_state(operationId, default_operationIds=None):
+    mapping = {
+        "update": "present",
+        "delete": "absent",
+        "create": "present",
+    }
+    # in this case, we don't want to see 'create' in the
+    # "Required with" list
+    if (
+        default_operationIds
+        and operationId == "update"
+        and "create" not in default_operationIds
+    ):
+        return
+    if operationId in mapping:
+        return mapping[operationId]
+    else:
+        return operationId
+
+
+def gen_arguments_py(parameters):
     result = ""
     for parameter in parameters:
         name = parameter["name"]
@@ -132,20 +151,115 @@ def gen_arguments_py(parameters, list_index=None):
     return result
 
 
-class Resource:
-    def __init__(self, name):
-        self.name = name
-        self.operations = {}
-        self.summary = {}
-
-
 class AnsibleModuleBase:
     def __init__(self, name, description, definitions):
+        self.name = name
         self.description = description
         self.definitions = definitions
-        self.name = name
         self.default_operationIds = None
+    
+    @staticmethod
+    def _property_to_parameter(prop_struct, definitions, operationId):
+        properties = flatten_ref(prop_struct, definitions)
 
+        def get_next(properties):
+            required_keys = []
+            for i, v in enumerate(properties):
+                required = v.get("required")
+                if "schema" in v:
+                    if "properties" in v["schema"]:
+                        properties[i] = v["schema"]["properties"]
+                        if "required" in v["schema"]:
+                            required_keys = v["schema"]["required"]
+                    elif "additionalProperties" in v["schema"]:
+                        properties[i] = v["schema"]["additionalProperties"][
+                            "properties"
+                        ]
+
+            for i, v in enumerate(properties):
+                # appliance_health_messages
+                if isinstance(v, str):
+                    yield v, {}, [], []
+
+                elif "spec" in v and "properties" in v["spec"]:
+                    required_keys = required_keys or []
+                    if "required" in v["spec"]:
+                        required_keys = v["spec"]["required"]
+                    for name, property in v["spec"]["properties"].items():
+                        yield name, property, ["spec"], name in required_keys
+
+                elif isinstance(v, dict):
+                    if not isinstance(v, dict):
+                        continue
+                    # {'type': 'string', 'required': True, 'in': 'path', 'name': 'datacenter', 'description': 'Identifier of the datacenter.'}
+                    if "name" in v and "in" in v and v.get("in") in ["path", "query"]:
+                        yield v["name"], v, [], v.get("required")
+                    # elif "name" in v and isinstance(v["name", dict]):
+                    #    yield v["name"], v, [], v.get("required")
+                    else:
+                        for k, data in v.items():
+                            if isinstance(data, dict):
+                                yield k, data, [], k in required_keys or data.get(
+                                    "required"
+                                )
+
+        parameters = []
+
+        for name, v, parent, required in get_next(properties):
+            if name == "request_body":
+                raise ValueError()
+            parameter = {
+                "name": name,
+                "type": v.get("type", "str"),  # 'str' by default, should be ok
+                "description": v.get("description", ""),
+                "required": required,
+                "_loc_in_payload": "/".join(parent + [name]),
+                "in": v.get("in"),
+            }
+            if "enum" in v:
+                parameter["enum"] = sorted(set(v["enum"]))
+
+            sub_items = None
+            required_subkeys = v.get("required", [])
+
+            if "properties" in v:
+                sub_items = v["properties"]
+                if "required" in v["properties"]:  # NOTE: do we still need these
+                    required_subkeys = v["properties"]["required"]
+            elif "items" in v and "properties" in v["items"]:
+                sub_items = v["items"]["properties"]
+                if "required" in v["items"]:  # NOTE: do we still need these
+                    required_subkeys = v["items"]["required"]
+            elif "items" in v and "name" not in v["items"]:
+                parameter["elements"] = v["items"].get("type", "str")
+            elif "items" in v and v["items"]["name"]:
+                sub_items = v["items"]
+
+            if sub_items:
+                subkeys = {}
+                for sub_k, sub_v in sub_items.items():
+                    subkey = {
+                        "name": sub_k,
+                        "type": sub_v["type"],
+                        "description": sub_v.get("description", ""),
+                        "_required_with_operations": [operationId]
+                        if sub_k in required_subkeys
+                        else [],
+                        "_operationIds": [operationId],
+                    }
+                    if "enum" in sub_v:
+                        subkey["enum"] = sub_v["enum"]
+                    if "properties" in sub_v:
+                        subkey["properties"] = sub_v["properties"]
+                    subkeys[sub_k] = subkey
+                parameter["subkeys"] = subkeys
+                parameter["elements"] = "dict"
+            parameters.append(parameter)
+
+        return sorted(
+            parameters, key=lambda item: (item["name"], item.get("description"))
+        )
+    
     def description(self):
         prefered_operationId = ["get", "list", "create", "update", "delete"]
         for operationId in prefered_operationId:
@@ -160,9 +274,6 @@ class AnsibleModuleBase:
 
         print(f"generic description: {self.name}")
         return f"Handle resource of type {self.name}"
-    
-    def get_path(self):
-        return list(self.resource.operations.values())[0][1]
 
     def is_trusted(self):
         if get_module_from_config(self.name) is False:
@@ -190,29 +301,24 @@ class AnsibleModuleBase:
         module_py_file.write_text(content)
     
     def renderer(self, target_dir, next_version):
-
         added_ins = get_module_added_ins(self.name, git_dir=target_dir / ".git")
-        #arguments = gen_arguments_py(self.parameters(), self.list_index())
+        #arguments = gen_arguments_py(self.parameters())
         documentation = generate_documentation(
-            self.name,
-            self.description,
-            pretty(self.definitions.definitions),
+            self,
             added_ins,
             next_version,
         )
-
+        print("Documentation")
+        print(documentation)
         #required_if = self.gen_required_if(self.parameters())
 
         content = jinja2_renderer(
             self.template_file,
             #arguments=_indent(arguments, 4),
             documentation=documentation,
-            #list_index=self.list_index(),
             name=self.name,
             #required_if=required_if,
         )
-
-        #print("CONTENT", content)
 
         self.write_module(target_dir, content)
 
@@ -252,23 +358,6 @@ class Definitions:
         self._definitions = a
 
 
-class Path:
-    def __init__(self, path, value):
-        super().__init__()
-        self.path = path
-        self.operations = {}
-        self.verb = {}
-        self.value = value
-
-    def summary(self, verb):
-        return self.value[verb]["summary"]
-
-    def is_tech_preview(self):
-        for verb in self.value.keys():
-            if "Technology Preview" in self.summary(verb):
-                return True
-        return False
-
 def pretty(d, indent=10, result=""):
     for key, value in d.items():
         result += " " * indent + str(key)
@@ -295,57 +384,28 @@ def main():
 
     module_list = []
     
-    for type_name in resources_test:
+    for type_name in RESOURCES:
         print("Generating modules")
         cloudformation = CloudFormationWrapper(boto3.client('cloudformation'))
         raw_content = cloudformation.generate_docs(
             type_name
         )
-        
-        for type_name in resources_test:
-            json_content = json.loads(raw_content)
-            type_name = json_content.get("typeName")
-            description = json_content.get("description")
-            module_name = MODULE_NAME_MAPPING[type_name]
-            definitions = Definitions(type_name, json_content.get("definitions"))
+        json_content = json.loads(raw_content)
+        type_name = json_content.get("typeName")
+        description = json_content.get("description")
+        module_name = MODULE_NAME_MAPPING.get(type_name)
 
-            module = AnsibleModule(module_name, description=description, definitions=definitions)
+        definitions = Definitions(type_name, json_content.get("definitions"))
 
-            if module.is_trusted():
-                module.renderer(
-                    target_dir=args.target_dir, next_version=args.next_version
-                )
-                module_list.append(module.name)
-            module_list.append(module_name)
+        module = AnsibleModule(module_name, description=description, definitions=definitions)
+
+        if module.is_trusted():
+            module.renderer(
+                target_dir=args.target_dir, next_version=args.next_version
+            )
+            module_list.append(module.name)
 
 
-        # for resource in resources.values():
-        #     if "list" in resource.operations:
-        #         module = AnsibleInfoListOnlyModule(
-        #             resource, definitions=swagger_file.definitions
-        #         )
-        #         if module.is_trusted() and len(module.default_operationIds) > 0:
-        #             module.renderer(
-        #                 target_dir=args.target_dir, next_version=args.next_version
-        #             )
-        #             module_list.append(module.name)
-        #     elif "get" in resource.operations:
-        #         module = AnsibleInfoNoListModule(
-        #             resource, definitions=swagger_file.definitions
-        #         )
-        #         if module.is_trusted() and len(module.default_operationIds) > 0:
-        #             module.renderer(
-        #                 target_dir=args.target_dir, next_version=args.next_version
-        #             )
-        #             module_list.append(module.name)
-
-        #     module = AnsibleModule(resource, definitions=swagger_file.definitions)
-
-        #     if module.is_trusted() and len(module.default_operationIds) > 0:
-        #         module.renderer(
-        #             target_dir=args.target_dir, next_version=args.next_version
-        #         )
-        #         module_list.append(module.name)
 
     files = [f"plugins/modules/{module}.py" for module in module_list]
     files += ["plugins/module_utils/core.py"]
@@ -374,7 +434,6 @@ def main():
         if version in ["2.9", "2.10", "2.11"]:
             skip_list += [
                 "validate-modules:missing-if-name-main",
-                "validate-modules:missing-main-call",  # there is an async main()
             ]
         elif version == "2.12":
             # https://docs.python.org/3.10/library/asyncio-eventloop.html#asyncio.get_event_loop

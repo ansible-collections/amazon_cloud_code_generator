@@ -66,11 +66,14 @@ def preprocess(a_dict, subst_dict):
             if key == "properties":
                 a_dict["suboptions"] = a_dict.pop(key)
                 key = "suboptions"
+
             if "items" in a_dict[key]:
-                a_dict[key] = dict(a_dict_copy[key], **a_dict.pop(key))
+                a_dict[key] = dict(a_dict_copy[key], **a_dict[key].pop("items"))
+
             if  "$ref" in a_dict[key]:
                 lookup_param = a_dict[key]['$ref'].split('/')[-1].strip()
                 for _, _ in subst_dict.items():
+
                     if subst_dict.get(lookup_param):
                         a_dict[key] = subst_dict[lookup_param]
                     break
@@ -82,7 +85,7 @@ def preprocess(a_dict, subst_dict):
             if key == "description":
                 a_dict[key] = a_dict_copy[key]
             if key == "const":
-                a_dict["defaults"] = a_dict.pop(key)
+                a_dict["default"] = a_dict.pop(key)
 
 
 def ensure_required(a_dict):
@@ -101,7 +104,7 @@ def ensure_required(a_dict):
 
 
 def cleanup_keys(a_dict):
-    list_of_keys_to_remove = ["additionalProperties", "insertionOrder", "uniqueItems"]
+    list_of_keys_to_remove = ["additionalProperties", "insertionOrder", "uniqueItems", "pattern"]
     if not isinstance(a_dict, dict):
         return a_dict
     return {k: v for k, v in ((k, cleanup_keys(v)) for k, v in a_dict.items()) if k not in list_of_keys_to_remove}
