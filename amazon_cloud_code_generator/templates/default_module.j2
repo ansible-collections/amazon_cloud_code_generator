@@ -1,19 +1,10 @@
 {% include 'header.j2' %}
 
-# template: default_module.j2
-
 import json
-import os
-import time
-
-try:
-    import botocore
-except ImportError:
-    pass  # Handled by AnsibleAWSModule
-
 
 from ansible_collections.amazon.aws.plugins.module_utils.core import AnsibleAWSModule
 from ansible_collections.amazon.cloud.plugins.module_utils.core import CloudControlResource
+from ansible_collections.amazon.aws.plugins.module_utils.ec2 import snake_dict_to_camel_dict
 
 
 def main():
@@ -21,22 +12,23 @@ def main():
     argument_spec = dict(
         client_token=dict(type='str', no_log=True),
         state=dict(type='str', choices=['create', 'update', 'delete', 'list', 'describe'], default='create'),
-        {{arguments}}
     )
+    {{arguments}}
 
     module = AnsibleAWSModule(argument_spec=argument_spec, supports_check_mode=False)
     cloud = CloudControlResource(module)
 
     type_name = {{resource_type}}
-    params = {{params}}
 
+    params = {}
+    {{params}}
     # The DesiredState we pass to AWS must be a JSONArray of non-null values
-    params_to_set = {k: v for k, v in params.items() if v is not None}
+    _params_to_set = {k: v for k, v in params.items() if v is not None}
+    params_to_set = snake_dict_to_camel_dict(_params_to_set, capitalize_first=True)
+    
     desired_state = json.dumps(params_to_set)
-
     state = module.params.get('state')
-
-    identifier = {{identifier}} # identifier of the resource
+    identifier = module.params.get('{{primary_identifier}}')
 
     if state == 'list':
         result = cloud.list_resources(type_name)
@@ -45,10 +37,13 @@ def main():
         result = cloud.create_resource(type_name, identifier, desired_state)            
 
     if state == 'update':
-      result = cloud.update_resource(type_name, identifier, params_to_set)
+        result = cloud.update_resource(type_name, identifier, params_to_set)
       
     if state == 'delete':
-      result = cloud.delete_resource(type_name, identifier)
+        result = cloud.delete_resource(type_name, identifier)
+    
+    if state == 'describe':
+        result = cloud.get_resource(type_name, identifier)
 
     module.exit_json(**result)
 

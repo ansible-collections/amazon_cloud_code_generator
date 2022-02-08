@@ -14,9 +14,9 @@ RESOURCES = [
     "AWS::S3::Bucket",
     #"AWS::EC2::SecurityGroup",
     # "AWS::CloudWatch::Alarm",
-    # "AWS::EC2::Instance",
+    "AWS::EC2::Instance",
     # "AWS::AutoScaling::AutoScalingGroup",
-    # "AWS::IAM::Policy",
+    "AWS::IAM::Policy",
     # "AWS::IAM::InstanceProfile",
     # "AWS::ElasticLoadBalancingV2::TargetGroup",
     # "AWS::AutoScaling::ScalingPolicy",
@@ -40,9 +40,13 @@ RESOURCES = [
     # "AWS::EC2::SubnetCidrBlock",
 ]
 
+
 MODULE_NAME_MAPPING = {
     "AWS::S3::Bucket": "s3_bucket",
+    "AWS::IAM::Policy": "iam_policy",
+    "AWS::EC2::Instance": "ec2_instance",
 }
+
 
 def python_type(value):
     TYPE_MAPPING = {
@@ -67,13 +71,9 @@ def preprocess(a_dict, subst_dict):
                 a_dict["suboptions"] = a_dict.pop(key)
                 key = "suboptions"
 
-            if "items" in a_dict[key]:
-                a_dict[key] = dict(a_dict_copy[key], **a_dict[key].pop("items"))
-
             if  "$ref" in a_dict[key]:
                 lookup_param = a_dict[key]['$ref'].split('/')[-1].strip()
                 for _, _ in subst_dict.items():
-
                     if subst_dict.get(lookup_param):
                         a_dict[key] = subst_dict[lookup_param]
                     break
@@ -83,9 +83,35 @@ def preprocess(a_dict, subst_dict):
             if key == "type":
                 a_dict[key] = python_type(a_dict_copy[key])
             if key == "description":
-                a_dict[key] = a_dict_copy[key]
+                a_dict[key] = [a_dict_copy[key]]
             if key == "const":
                 a_dict["default"] = a_dict.pop(key)
+
+
+def ensure_options(a_dict, definitions):
+    a_dict_copy = copy.copy(a_dict)
+
+    for k, v in a_dict.items():
+        if "description" in v:
+            a_dict_copy[k]["description"] = [v["description"]]
+
+        if "enum" in v:
+            a_dict_copy[k]["choices"] = sorted(a_dict_copy[k].pop("enum"))
+
+        if "type" in v:
+            a_dict_copy[k]["type"] = python_type(v["type"])
+
+        if "$ref" in v:
+            lookup_param = v['$ref'].split('/')[-1].strip()
+            a_dict_copy[k].update(definitions.get(lookup_param))
+            a_dict_copy[k].pop("$ref")
+        
+        if "items" in v:
+            if "$ref" in v["items"]: 
+                lookup_param = v["items"]['$ref'].split('/')[-1].strip()
+                a_dict_copy[k]["items"] = definitions.get(lookup_param)
+    
+    return a_dict_copy
 
 
 def ensure_required(a_dict):
@@ -95,16 +121,24 @@ def ensure_required(a_dict):
         return a_dict
     
     for k, v in a_dict_copy.items():
-        if isinstance(v, dict) and "required" in v and isinstance(v["required"], list):
-            for r in v["required"]:
-                a_dict[k]["suboptions"][r]["required"] = True
-            a_dict[k].pop("required")
+        if isinstance(v, dict):
+            if "items" in a_dict[k]:
+                if a_dict[k]["items"].get("type"):
+                    a_dict[k]["elements"] = python_type(a_dict_copy[k]["items"].pop("type"))
+                a_dict[k] = dict(a_dict_copy[k], **a_dict[k].pop("items"))
+                v = a_dict[k]
 
-        ensure_required(a_dict_copy[k])
+            if "required" in v and isinstance(v["required"], list):
+                for r in v["required"]:
+                    a_dict[k]["suboptions"][r]["required"] = True
+                a_dict[k].pop("required")
+
+        ensure_required(a_dict[k])
 
 
 def cleanup_keys(a_dict):
     list_of_keys_to_remove = ["additionalProperties", "insertionOrder", "uniqueItems", "pattern"]
+        
     if not isinstance(a_dict, dict):
         return a_dict
     return {k: v for k, v in ((k, cleanup_keys(v)) for k, v in a_dict.items()) if k not in list_of_keys_to_remove}
@@ -159,21 +193,29 @@ def get_module_from_config(module):
 def generate_documentation(module, added_ins, next_version):
     module_name = module.name 
     definitions = module.definitions.definitions
+    options = module.options
     description = module.description
     documentation = {
         "module": module_name,
         "author": "Ansible Cloud Team (@ansible-collections)",
-        "description": description,
-        "short_description": description,
+        "description": [description],
+        "short_description": [description],
         "options": definitions,
         "requirements": [],
         "version_added": added_ins["module"] or next_version,
     }
 
-    preprocess(documentation, documentation["options"])
-    ensure_required(documentation["options"])
-    documentation = cleanup_keys(documentation)
-    documentation = camel_to_snake(documentation)
+    preprocess(documentation, definitions)
+    _options = ensure_options(options, documentation['options'])
+    ensure_required(_options)
+
+    if module.required:
+        for r in module.required:
+            _options[r]["required"] = True
+
+    documentation['options'] = _options
+    _documentation = cleanup_keys(documentation)
+    documentation = camel_to_snake(_documentation)
 
     module_from_config = get_module_from_config(module_name)
     if module_from_config and "documentation" in module_from_config:
