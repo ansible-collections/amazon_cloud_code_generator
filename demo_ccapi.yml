@@ -13,7 +13,31 @@
     - assert:
         that:
             - _result is success
-
+    
+    - name: Delete the simple S3 bucket
+      amazon.cloud.s3_bucket:
+        bucket_name: '{{ local_bucket_name }}'
+        state: delete
+      register: _result
+      ignore_errors: true
+    
+    - name: Create a simple bucket with public access block configuration - check_mode
+      amazon.cloud.s3_bucket:
+        bucket_name: "{{ local_bucket_name }}"
+        state: create
+        public_access_block_configuration:
+          block_public_acls: true
+          block_public_policy: true
+          ignore_public_acls: true
+          restrict_public_buckets: true
+      check_mode: true
+      register: _result
+    
+    - assert:
+        that:
+            - _result is success
+            - _result is changed
+  
     - name: Create a simple bucket with public access block configuration
       amazon.cloud.s3_bucket:
         bucket_name: "{{ local_bucket_name }}"
@@ -55,7 +79,41 @@
         that:
             - _result is success
             - _result is not changed
+    
+    - name: Create a simple bucket with public access block configuration (check_mode) - idempotence
+      amazon.cloud.s3_bucket:
+        bucket_name: "{{ local_bucket_name }}"
+        state: create
+        public_access_block_configuration:
+          block_public_acls: true
+          block_public_policy: true
+          ignore_public_acls: true
+          restrict_public_buckets: true
+      check_mode: true
+      register: _result
+    
+    - assert:
+        that:
+            - _result is success
+            - _result is not changed
 
+    - name: Update simple bucket public access block configuration - check_mode
+      amazon.cloud.s3_bucket:
+        bucket_name: "{{ local_bucket_name }}"
+        state: update
+        public_access_block_configuration:
+          block_public_acls: false
+          block_public_policy: false
+          ignore_public_acls: false
+          restrict_public_buckets: false
+      check_mode: true
+      register: _result
+    
+    - assert:
+        that:
+            - _result is success
+            - _result is changed
+  
     - name: Update simple bucket public access block configuration
       amazon.cloud.s3_bucket:
         bucket_name: "{{ local_bucket_name }}"
@@ -87,6 +145,35 @@
         that:
             - _result is success
             - _result is not changed
+    
+    - name: Update simple bucket public access block configuration (block_public_policy=true)
+      amazon.cloud.s3_bucket:
+        bucket_name: "{{ local_bucket_name }}"
+        state: update
+        public_access_block_configuration:
+          block_public_acls: false
+          block_public_policy: true
+          ignore_public_acls: false
+          restrict_public_buckets: false
+        wait: true
+      register: _result
+    
+    - assert:
+        that:
+            - _result is success
+            - _result is changed
+    
+    - name: Delete the simple s3_bucket - check_mode
+      amazon.cloud.s3_bucket:
+        bucket_name: '{{ local_bucket_name }}'
+        state: delete
+      check_mode: true
+      register: _result
+    
+    - assert:
+        that:
+            - _result is success
+            - _result is changed
   
     - name: Delete the simple s3_bucket
       amazon.cloud.s3_bucket:
@@ -103,6 +190,18 @@
       amazon.cloud.s3_bucket:
         bucket_name: '{{ local_bucket_name }}'
         state: delete
+      register: _result
+    
+    - assert:
+        that:
+            - _result is success
+            - _result is not changed
+    
+    - name: Delete the simple S3 bucket (check_mode) - idempotence
+      amazon.cloud.s3_bucket:
+        bucket_name: '{{ local_bucket_name }}'
+        state: delete
+      check_mode: true
       register: _result
     
     - assert:
