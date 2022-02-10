@@ -15,7 +15,7 @@ def main():
     )
     {{arguments}}
 
-    module = AnsibleAWSModule(argument_spec=argument_spec, supports_check_mode=False)
+    module = AnsibleAWSModule(argument_spec=argument_spec, supports_check_mode=True)
     cloud = CloudControlResource(module)
 
     type_name = {{resource_type}}

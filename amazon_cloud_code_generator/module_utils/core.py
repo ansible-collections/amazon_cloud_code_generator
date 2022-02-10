@@ -111,7 +111,7 @@ class CloudControlResource(object):
             return result
         except (botocore.exceptions.BotoCoreError, botocore.exceptions.ClientError) as e:
             self.module.fail_json_aws(e, msg="")
-        
+
         result["result"] = response
         return result
 
@@ -125,11 +125,11 @@ class CloudControlResource(object):
             if not self.module.check_mode:
                 try:
                     response = self.client.create_resource(TypeName=type_name, DesiredState=params)
+                    result["result"] = response
                     self.client.get_waiter('resource_request_success').wait(RequestToken=response['ProgressEvent']['RequestToken'])
                 except botocore.exceptions.WaiterError as e:
                     self.module.fail_json_aws(e, msg='An error occurred waiting for the resource request to become successful')
             result["changed"] = True
-            result["result"] = response
             self.module.exit_json(**result)
         except (botocore.exceptions.BotoCoreError, botocore.exceptions.ClientError) as e:
             self.module.fail_json_aws(e, msg="")

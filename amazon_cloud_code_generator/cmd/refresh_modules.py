@@ -114,12 +114,16 @@ def generate_argument_spec(definitions):
             _choices = ", ".join([f"'{i}'" for i in sorted(definitions[key]["choices"])])
             values.append(f"'choices': [{_choices}]")
         
-        if definitions[key].get("required"):
-            values.append("'required': True")
+        if definitions[key].get("required") is not None:
+            _required = definitions[key]["required"]
+            values.append(f"'required': {_required}")
         
-        if definitions[key].get("default"):
+        if definitions[key].get("default") is not None:
             _default = definitions[key]["default"]
-            values.append(f"'default': '{_default}'")
+            if isinstance(_default, bool):
+                values.append(f"'default': {_default}")
+            else:
+                values.append(f"'default': '{_default}'")
 
         argument_spec += f"\nargument_spec['{key}'] = "
         argument_spec += "{" + ", ".join(values) + "}"
@@ -129,7 +133,7 @@ def generate_argument_spec(definitions):
 
 def generate_params(definitions):
     params = ""
-    for key in definitions.keys():
+    for key in definitions.keys() - ["wait", "wait_timeout"]:
         params += f"\nparams['{key}'] = module.params.get('{key}')"
     
     return params
@@ -165,8 +169,8 @@ class AnsibleModuleBase:
                 next_version,
             )
 
-        documentation_to_str = format_documentation(documentation)
         arguments = generate_argument_spec(documentation["options"])
+        documentation_to_str = format_documentation(documentation)
 
         #required_if = self.gen_required_if(self.parameters())
 
@@ -236,6 +240,7 @@ def format_documentation(documentation):
         "seealso",
         "notes",
     ]
+
     final = "r'''\n"
     for i in keys:
         if i not in documentation:
@@ -246,6 +251,7 @@ def format_documentation(documentation):
             sanitized = documentation[i]
         final += yaml.dump({i: sanitized}, indent=4)
     final += "'''"
+
     return final
 
 def main():

@@ -217,6 +217,21 @@ def generate_documentation(module, added_ins, next_version):
     _documentation = cleanup_keys(documentation)
     documentation = camel_to_snake(_documentation)
 
+    documentation["options"].update(
+        {
+            "wait": {
+                "description": ["Wait for operation to complete before returning."],
+                "type": "bool",
+                "default": False,
+            },
+            "wait_timeout": {
+                "description": ["How many seconds to wait for an operation to complete before timing out."],
+                "type": "int",
+                "default": 320,
+            },
+        }
+    )
+
     module_from_config = get_module_from_config(module_name)
     if module_from_config and "documentation" in module_from_config:
         for k, v in module_from_config["documentation"].items():
