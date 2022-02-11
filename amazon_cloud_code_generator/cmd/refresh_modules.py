@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 
+import re
 import argparse
 from functools import lru_cache
 import pathlib
@@ -14,12 +15,12 @@ import jinja2
 import json
 import boto3
 
-from .generator import CloudFormationWrapper
-from .generator import RESOURCES
-from .generator import MODULE_NAME_MAPPING
-from .generator import generate_documentation
-from .generator import get_module_from_config
-from .generator import _camel_to_snake
+from generator import CloudFormationWrapper
+from generator import RESOURCES
+from generator import MODULE_NAME_MAPPING
+from generator import generate_documentation
+from generator import get_module_from_config
+from generator import _camel_to_snake
 
 
 def run_git(git_dir, *args):
@@ -139,6 +140,46 @@ def generate_params(definitions):
     return params
 
 
+def format_documentation(documentation):
+    yaml.Dumper.ignore_aliases = lambda *args : True
+
+    def _sanitize(input):
+        if isinstance(input, str):
+            return input.replace("':'", ":")
+        if isinstance(input, list):
+            return [l.replace("':'", ":") for l in input]
+        if isinstance(input, dict):
+            return {k: _sanitize(v) for k, v in input.items()}
+        if isinstance(input, bool):
+            return input
+        raise TypeError
+
+    keys = [
+        "module",
+        "short_description",
+        "description",
+        "options",
+        "author",
+        "version_added",
+        "requirements",
+        "seealso",
+        "notes",
+    ]
+
+    final = "r'''\n"
+    for i in keys:
+        if i not in documentation:
+            continue
+        if isinstance(documentation[i], str):
+            sanitized = _sanitize(documentation[i])
+        else:
+            sanitized = documentation[i]
+        final += yaml.dump({i: sanitized}, indent=4, default_flow_style=False)
+    final += "'''"
+
+    return final
+
+
 class AnsibleModuleBase:
     def __init__(self, name, description, definitions, options, required, primaryIdentifier):
         self.name = name
@@ -164,10 +205,10 @@ class AnsibleModuleBase:
         added_ins = get_module_added_ins(self.name, git_dir=target_dir / ".git")
 
         documentation = generate_documentation(
-                self,
-                added_ins,
-                next_version,
-            )
+            self,
+            added_ins,
+            next_version,
+        )
 
         arguments = generate_argument_spec(documentation["options"])
         documentation_to_str = format_documentation(documentation)
@@ -216,43 +257,6 @@ class Definitions:
     def definitions(self, a):
         self._definitions = a
 
-
-def format_documentation(documentation):
-    def _sanitize(input):
-        if isinstance(input, str):
-            return input.replace("':'", ":")
-        if isinstance(input, list):
-            return [l.replace("':'", ":") for l in input]
-        if isinstance(input, dict):
-            return {k: _sanitize(v) for k, v in input.items()}
-        if isinstance(input, bool):
-            return input
-        raise TypeError
-
-    keys = [
-        "module",
-        "short_description",
-        "description",
-        "options",
-        "author",
-        "version_added",
-        "requirements",
-        "seealso",
-        "notes",
-    ]
-
-    final = "r'''\n"
-    for i in keys:
-        if i not in documentation:
-            continue
-        if isinstance(documentation[i], str):
-            sanitized = _sanitize(documentation[i])
-        else:
-            sanitized = documentation[i]
-        final += yaml.dump({i: sanitized}, indent=4)
-    final += "'''"
-
-    return final
 
 def main():
     parser = argparse.ArgumentParser(description="Build the amazon.cloud modules.")

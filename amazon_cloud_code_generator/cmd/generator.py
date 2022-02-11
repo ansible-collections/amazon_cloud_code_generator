@@ -14,9 +14,9 @@ RESOURCES = [
     "AWS::S3::Bucket",
     #"AWS::EC2::SecurityGroup",
     # "AWS::CloudWatch::Alarm",
-    "AWS::EC2::Instance",
+    #"AWS::EC2::Instance",
     # "AWS::AutoScaling::AutoScalingGroup",
-    "AWS::IAM::Policy",
+    #"AWS::IAM::Policy",
     # "AWS::IAM::InstanceProfile",
     # "AWS::ElasticLoadBalancingV2::TargetGroup",
     # "AWS::AutoScaling::ScalingPolicy",
@@ -43,9 +43,75 @@ RESOURCES = [
 
 MODULE_NAME_MAPPING = {
     "AWS::S3::Bucket": "s3_bucket",
-    "AWS::IAM::Policy": "iam_policy",
-    "AWS::EC2::Instance": "ec2_instance",
+    #"AWS::IAM::Policy": "iam_policy",
+    #"AWS::EC2::Instance": "ec2_instance",
 }
+
+
+class Description:
+    @classmethod
+    def normalize(cls, string):
+        with_no_line_break = []
+        sentences = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', string)
+
+        for l in sentences:
+            if "\n" in l:
+                with_no_line_break += l.split("\n")
+            else:
+                with_no_line_break.append(l)
+
+        with_no_line_break = [cls.write_I(i) for i in with_no_line_break]
+        with_no_line_break = [cls.clean_up(i) for i in with_no_line_break]
+
+        return with_no_line_break
+
+    @classmethod
+    def clean_up(cls, my_string):
+        def rewrite_name(matchobj):
+            name = matchobj.group(1)
+            snake_name = cls.to_snake(name)
+            output = f"C({snake_name})"
+            return output
+
+        def rewrite_link(matchobj):
+            name = matchobj.group(1)
+            if "#" in name and name.split("#")[0]:
+                output = name.split("#")[1]
+            else:
+                output = name
+            return output
+
+        my_string = my_string.replace(" {@term enumerated type}", "")
+        my_string = my_string.replace(" {@term list}", "list")
+        my_string = my_string.replace(" {@term operation}", "operation")
+        my_string = re.sub(r"{@name DayOfWeek}", "day of the week", my_string)
+        my_string = re.sub(r": The\s\S+\senumerated type", ": This option", my_string)
+        my_string = re.sub(r" <p> ", " ", my_string)
+        my_string = re.sub(r" See {@.*}.", "", my_string)
+        my_string = re.sub(r"\({@.*?\)", "", my_string)
+        my_string = re.sub(r"{@code true}", "C(True)", my_string)
+        my_string = re.sub(r"{@code false}", "C(False)", my_string)
+        my_string = re.sub(r"{@code\s+?(.*?)}", r"C(\1)", my_string)
+        my_string = re.sub(r"{@name\s+?([^}]*)}", rewrite_name, my_string)
+
+        return my_string
+    
+    @classmethod
+    def ref_to_parameter(cls, ref):
+        splitted = ref.split(".")
+        my_parameter = splitted[-1].replace("-", "_")
+        return cls.to_snake(my_parameter)
+
+    @classmethod
+    def write_I(cls, my_string):
+        refs = {
+            cls.ref_to_parameter(i): i
+            for i in re.findall(r"[A-Z][\w+]+\.[A-Z][\w+\.-]+", my_string)
+        }
+        for parameter_name in sorted(refs.keys(), key=len, reverse=True):
+            ref = refs[parameter_name]
+            my_string = my_string.replace(ref, f"I({parameter_name})")
+        return my_string
 
 
 def python_type(value):
@@ -73,17 +139,21 @@ def preprocess(a_dict, subst_dict):
 
             if  "$ref" in a_dict[key]:
                 lookup_param = a_dict[key]['$ref'].split('/')[-1].strip()
-                for _, _ in subst_dict.items():
-                    if subst_dict.get(lookup_param):
-                        a_dict[key] = subst_dict[lookup_param]
-                    break
+                if subst_dict.get(lookup_param):
+                    result = subst_dict[lookup_param]
+                    if a_dict[key].get("description") and result.get("description"):
+                        if isinstance(a_dict[key]["description"], list):
+                            a_dict[key]["description"].extend([result.pop("description")])
+                        else:
+                            a_dict[key]["description"] += result.pop("description")
+                    a_dict[key] = result
             else:
                 preprocess(a_dict[key], subst_dict)
         elif isinstance(a_dict[key], str): 
             if key == "type":
                 a_dict[key] = python_type(a_dict_copy[key])
             if key == "description":
-                a_dict[key] = [a_dict_copy[key]]
+                a_dict[key] = list(Description.normalize(a_dict_copy[key]))
             if key == "const":
                 a_dict["default"] = a_dict.pop(key)
 
@@ -93,7 +163,7 @@ def ensure_options(a_dict, definitions):
 
     for k, v in a_dict.items():
         if "description" in v:
-            a_dict_copy[k]["description"] = [v["description"]]
+            a_dict_copy[k]["description"] = list(Description.normalize(v["description"]))
 
         if "enum" in v:
             a_dict_copy[k]["choices"] = sorted(a_dict_copy[k].pop("enum"))
@@ -137,7 +207,7 @@ def ensure_required(a_dict):
 
 
 def cleanup_keys(a_dict):
-    list_of_keys_to_remove = ["additionalProperties", "insertionOrder", "uniqueItems", "pattern"]
+    list_of_keys_to_remove = ["additionalProperties", "insertionOrder", "uniqueItems", "pattern", "examples", "max_length", "min_length"]
         
     if not isinstance(a_dict, dict):
         return a_dict
