@@ -31,7 +31,6 @@ This module_utility adds shared support for AWS Cloud Control API modules.
 """
 
 from __future__ import (absolute_import, division, print_function)
-from tkinter import E
 __metaclass__ = type
 
 
@@ -51,6 +50,12 @@ class CloudControlResource(object):
         """
         self.module = module
         self.client = module.client('cloudcontrol', retry_decorator=AWSRetry.jittered_backoff())
+    
+    @property
+    def _waiter_config(self):
+        delay = min(10, self.module.wait_timeout)
+        max_attempts = (self.module.wait_timeout // delay)
+        return {'Delay': delay, 'MaxAttempts': max_attempts}
 
     def list_resources(self, type_name):
         """
@@ -126,7 +131,10 @@ class CloudControlResource(object):
                 try:
                     response = self.client.create_resource(TypeName=type_name, DesiredState=params)
                     result["result"] = response
-                    self.client.get_waiter('resource_request_success').wait(RequestToken=response['ProgressEvent']['RequestToken'])
+                    self.client.get_waiter('resource_request_success').wait(
+                        RequestToken=response['ProgressEvent']['RequestToken'],
+                        WaiterConfig=self._waiter_config
+                    )
                 except botocore.exceptions.WaiterError as e:
                     self.module.fail_json_aws(e, msg='An error occurred waiting for the resource request to become successful')
             result["changed"] = True
@@ -173,7 +181,10 @@ class CloudControlResource(object):
 
                 if self.module.params.get('wait'):
                     try:
-                        self.client.get_waiter('resource_request_success').wait(RequestToken=response['ProgressEvent']['RequestToken'])
+                        self.client.get_waiter('resource_request_success').wait(
+                            RequestToken=response['ProgressEvent']['RequestToken'],
+                            WaiterConfig=self._waiter_config
+                        )
                     except botocore.exceptions.WaiterError as e:
                         self.module.fail_json_aws(e, msg='An error occurred waiting for the resource request to become successful.')
             result["changed"] = True
@@ -214,7 +225,10 @@ class CloudControlResource(object):
 
                     if self.module.params.get('wait'):
                         try:
-                            self.client.get_waiter('resource_request_success').wait(RequestToken=response['ProgressEvent']['RequestToken'])
+                            self.client.get_waiter('resource_request_success').wait(
+                                RequestToken=response['ProgressEvent']['RequestToken'],
+                                WaiterConfig=self._waiter_config
+                            )
                         except botocore.exceptions.WaiterError as e:
                             self.module.fail_json_aws(e, msg='An error occurred waiting for the resource request to become successful.')
                 result["changed"] = True
