@@ -15,12 +15,12 @@ import jinja2
 import json
 import boto3
 
-from generator import CloudFormationWrapper
-from generator import RESOURCES
-from generator import MODULE_NAME_MAPPING
-from generator import generate_documentation
-from generator import get_module_from_config
-from generator import _camel_to_snake
+from .generator import CloudFormationWrapper
+from .generator import RESOURCES
+from .generator import MODULE_NAME_MAPPING
+from .generator import generate_documentation
+from .generator import get_module_from_config
+from .generator import _camel_to_snake
 
 
 def run_git(git_dir, *args):
