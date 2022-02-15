@@ -6,6 +6,7 @@
 
 import copy
 import re
+from typing import List, Dict
 import yaml
 import pkg_resources
 
@@ -14,9 +15,9 @@ RESOURCES = [
     "AWS::S3::Bucket",
     #"AWS::EC2::SecurityGroup",
     # "AWS::CloudWatch::Alarm",
-    #"AWS::EC2::Instance",
+    "AWS::EC2::Instance",
     # "AWS::AutoScaling::AutoScalingGroup",
-    #"AWS::IAM::Policy",
+    "AWS::IAM::Policy",
     # "AWS::IAM::InstanceProfile",
     # "AWS::ElasticLoadBalancingV2::TargetGroup",
     # "AWS::AutoScaling::ScalingPolicy",
@@ -43,14 +44,15 @@ RESOURCES = [
 
 MODULE_NAME_MAPPING = {
     "AWS::S3::Bucket": "s3_bucket",
-    #"AWS::IAM::Policy": "iam_policy",
-    #"AWS::EC2::Instance": "ec2_instance",
+    "AWS::IAM::Policy": "iam_policy",
+    "AWS::EC2::Instance": "ec2_instance",
 }
 
 
 class Description:
     @classmethod
-    def normalize(cls, string):
+    def normalize(cls, string: str) -> List[str]:
+        # TODO: needs cleanup and adapt to the amazon.cloud doc
         with_no_line_break = []
         sentences = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', string)
 
@@ -66,7 +68,7 @@ class Description:
         return with_no_line_break
 
     @classmethod
-    def clean_up(cls, my_string):
+    def clean_up(cls, my_string: str) -> str:
         def rewrite_name(matchobj):
             name = matchobj.group(1)
             snake_name = cls.to_snake(name)
@@ -97,13 +99,13 @@ class Description:
         return my_string
     
     @classmethod
-    def ref_to_parameter(cls, ref):
+    def ref_to_parameter(cls, ref: str):
         splitted = ref.split(".")
         my_parameter = splitted[-1].replace("-", "_")
         return cls.to_snake(my_parameter)
 
     @classmethod
-    def write_I(cls, my_string):
+    def write_I(cls, my_string: str) -> str:
         refs = {
             cls.ref_to_parameter(i): i
             for i in re.findall(r"[A-Z][\w+]+\.[A-Z][\w+\.-]+", my_string)
@@ -114,7 +116,7 @@ class Description:
         return my_string
 
 
-def python_type(value):
+def python_type(value: str) -> str:
     TYPE_MAPPING = {
         "array": "list",
         "boolean": "bool",
@@ -125,7 +127,7 @@ def python_type(value):
     return TYPE_MAPPING.get(value, value)
 
 
-def preprocess(a_dict, subst_dict):
+def preprocess(a_dict: Dict, subst_dict: Dict):
     a_dict_copy = copy.copy(a_dict)
     
     for key in a_dict_copy.keys():
@@ -158,7 +160,7 @@ def preprocess(a_dict, subst_dict):
                 a_dict["default"] = a_dict.pop(key)
 
 
-def ensure_options(a_dict, definitions):
+def ensure_options(a_dict: Dict, definitions: Dict) -> Dict:
     a_dict_copy = copy.copy(a_dict)
 
     for k, v in a_dict.items():
@@ -184,7 +186,7 @@ def ensure_options(a_dict, definitions):
     return a_dict_copy
 
 
-def ensure_required(a_dict):
+def ensure_required(a_dict: Dict):
     a_dict_copy = copy.copy(a_dict)
 
     if not isinstance(a_dict, dict):
@@ -206,15 +208,15 @@ def ensure_required(a_dict):
         ensure_required(a_dict[k])
 
 
-def cleanup_keys(a_dict):
-    list_of_keys_to_remove = ["additionalProperties", "insertionOrder", "uniqueItems", "pattern", "examples", "max_length", "min_length"]
+def scrub_keys(a_dict: Dict) -> Dict:
+    list_of_keys_to_remove = ["additionalProperties", "insertionOrder", "uniqueItems", "pattern", "examples", "maxLength", "minLength", "format"]
         
     if not isinstance(a_dict, dict):
         return a_dict
-    return {k: v for k, v in ((k, cleanup_keys(v)) for k, v in a_dict.items()) if k not in list_of_keys_to_remove}
+    return {k: v for k, v in ((k, scrub_keys(v)) for k, v in a_dict.items()) if k not in list_of_keys_to_remove}
 
 
-def _camel_to_snake(name, reversible=False):
+def _camel_to_snake(name: str, reversible: bool=False) -> str:
 
     def prepend_underscore_and_lower(m):
         return '_' + m.group(0).lower()
@@ -240,7 +242,7 @@ def _camel_to_snake(name, reversible=False):
     return re.sub(all_cap_pattern, r'\1_\2', s2).lower()
 
 
-def camel_to_snake(a_dict):
+def camel_to_snake(a_dict: Dict) -> Dict:
     b_dict = {}
     for k in a_dict.keys():
         if isinstance(a_dict[k], dict):
@@ -250,7 +252,7 @@ def camel_to_snake(a_dict):
     return b_dict
 
 
-def get_module_from_config(module):
+def get_module_from_config(module: str):
     raw_content = pkg_resources.resource_string(
        "amazon_cloud_code_generator", "config/modules.yaml"
     )
@@ -260,10 +262,11 @@ def get_module_from_config(module):
     return False
 
 
-def generate_documentation(module, added_ins, next_version):
+def generate_documentation(module, added_ins: Dict, next_version: str) -> Dict:
     module_name = module.name 
     definitions = module.definitions.definitions
     options = module.options
+    required = module.required
     documentation = {
         "module": module_name,
         "author": "Ansible Cloud Team (@ansible-collections)",
@@ -278,12 +281,12 @@ def generate_documentation(module, added_ins, next_version):
     _options = ensure_options(options, documentation['options'])
     ensure_required(_options)
 
-    if module.required:
-        for r in module.required:
+    if required:
+        for r in required:
             _options[r]["required"] = True
 
     documentation['options'] = _options
-    _documentation = cleanup_keys(documentation)
+    _documentation = scrub_keys(documentation)
     documentation = camel_to_snake(_documentation)
 
     documentation["options"].update(
@@ -317,7 +320,7 @@ class CloudFormationWrapper:
         """
         self.client = client
     
-    def generate_docs(self, type_name):
+    def generate_docs(self, type_name: str):
         """
         Equivalent to
         aws cloudformation describe-type \

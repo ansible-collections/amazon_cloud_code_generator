@@ -6,6 +6,7 @@ import argparse
 from functools import lru_cache
 import pathlib
 import subprocess
+from typing import Dict, List
 import pkg_resources
 from pbr.version import VersionInfo
 import baron
@@ -23,7 +24,7 @@ from .generator import get_module_from_config
 from .generator import _camel_to_snake
 
 
-def run_git(git_dir, *args):
+def run_git(git_dir: str, *args):
     cmd = [
         "git",
         "--git-dir",
@@ -36,7 +37,7 @@ def run_git(git_dir, *args):
 
 
 @lru_cache(maxsize=None)
-def file_by_tag(git_dir):
+def file_by_tag(git_dir:  str) -> List[str]:
     tags = run_git(git_dir, "tag")
 
     files_by_tag = {}
@@ -46,12 +47,11 @@ def file_by_tag(git_dir):
     return files_by_tag
 
 
-def get_module_added_ins(module_name, git_dir):
+def get_module_added_ins(module_name: str, git_dir: str) -> Dict:
     added_ins = {"module": None, "options": {}}
     module = f"plugins/modules/{module_name}.py"
 
     for tag, files in file_by_tag(git_dir).items():
-        print("tag, files", tag, files)
         if "rc" in tag:
             continue
         if module in files:
@@ -90,7 +90,7 @@ def jinja2_renderer(template_file, **kwargs):
     return template.render(kwargs)
 
 
-def _indent(text_block, indent=0):
+def _indent(text_block: str, indent: int=0) -> str:
     result = ""
     for l in text_block.split("\n"):
         result += " " * indent
@@ -99,7 +99,7 @@ def _indent(text_block, indent=0):
     return result
 
 
-def generate_argument_spec(definitions):
+def generate_argument_spec(definitions: Dict) -> str:
     argument_spec = ""
     for key in definitions.keys():
         values = []
@@ -132,7 +132,7 @@ def generate_argument_spec(definitions):
     return argument_spec
 
 
-def generate_params(definitions):
+def generate_params(definitions: Dict) -> str:
     params = ""
     for key in definitions.keys() - ["wait", "wait_timeout"]:
         params += f"\nparams['{key}'] = module.params.get('{key}')"
@@ -155,7 +155,7 @@ def generate_params(definitions):
 #     return entries
 
 
-def format_documentation(documentation):
+def format_documentation(documentation: Dict) -> str:
     yaml.Dumper.ignore_aliases = lambda *args : True
 
     def _sanitize(input):
@@ -195,16 +195,9 @@ def format_documentation(documentation):
     return final
 
 
-class AnsibleModule:
-    template_file = "default_module.j2"
-
-    def __init__(self, name, description, definitions, options, required, primaryIdentifier):
-        self.name = name
-        self.description = description
-        self.definitions = definitions
-        self.options = options
-        self.required = required
-        self.primaryIdentifier = primaryIdentifier
+class AnsibleModuleBase:
+    def __init__(self, schema: Dict):
+        self.schema = schema        
 
     def is_trusted(self):
         if get_module_from_config(self.name) is False:
@@ -212,13 +205,13 @@ class AnsibleModule:
         else:
             return True
     
-    def write_module(self, target_dir, content):
+    def write_module(self, target_dir: str, content: str):
         module_dir = target_dir / "plugins" / "modules"
         module_dir.mkdir(parents=True, exist_ok=True)
         module_py_file = module_dir / "{name}.py".format(name=self.name)
         module_py_file.write_text(content)
     
-    def renderer(self, target_dir, next_version):
+    def renderer(self, target_dir: str, next_version: str):
         added_ins = get_module_added_ins(self.name, git_dir=target_dir / ".git")
 
         documentation = generate_documentation(
@@ -244,10 +237,24 @@ class AnsibleModule:
         )
 
         self.write_module(target_dir, content)
-    
+
+
+class AnsibleModule(AnsibleModuleBase):
+    template_file = "default_module.j2"
+
+    def __init__(self, *args, **kwargs):
+        super(AnsibleModule, self).__init__(*args, **kwargs)
+        type_name = self.schema.get("typeName")
+        self.definitions = Definitions(type_name, self.schema.get('definitions'))
+        self.name = MODULE_NAME_MAPPING.get(type_name) 
+        self.options = self.schema.get('properties')
+        self.required = self.schema.get("required")
+        self.primaryIdentifier = self.schema.get('primaryIdentifier')
+        self.readOnlyProperties = self.schema.get('readOnlyProperties')
+
 
 class Definitions:
-    def __init__(self, type_name, definitions):
+    def __init__(self, type_name: str, definitions: Dict):
         self.type_name = type_name
         self.definitions = definitions
     
@@ -288,20 +295,9 @@ def main():
         print("Generating modules")
         cloudformation = CloudFormationWrapper(boto3.client('cloudformation'))
         raw_content = cloudformation.generate_docs(type_name)
-        json_content = json.loads(raw_content)
-        type_name = json_content.get("typeName")        
-        module_name = MODULE_NAME_MAPPING.get(type_name)
+        schema = json.loads(raw_content)
 
-        definitions = Definitions(type_name, json_content.get("definitions"))
-
-        module = AnsibleModule(
-            module_name,
-            definitions=definitions,
-            options=json_content.get("properties"),
-            required=json_content.get("required"),
-            primaryIdentifier=json_content.get("primaryIdentifier"),
-            redOnlyParameters=json_content.get("redOnlyParameters")
-        )
+        module = AnsibleModule(schema=schema)
 
         if module.is_trusted():
             module.renderer(
