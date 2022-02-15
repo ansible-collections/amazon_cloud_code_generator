@@ -140,6 +140,21 @@ def generate_params(definitions):
     return params
 
 
+# def gen_required_if(parameters):
+#     # if state in create, update, delete -> primaryIdentifier
+#     # if state create -> required params (ex, iam_policy)
+#     by_states = DefaultDict(list)
+#     for parameter in parameters:
+#         for operation in parameter.get("_required_with_operations", []):
+#             by_states[ansible_state(operation)].append(parameter["name"])
+#     entries = []
+#     for operation, fields in by_states.items():
+#         state = ansible_state(operation)
+#         if "state" in entries:
+#             entries.append(["state", state, sorted(set(fields)), True])
+#     return entries
+
+
 def format_documentation(documentation):
     yaml.Dumper.ignore_aliases = lambda *args : True
 
@@ -180,7 +195,9 @@ def format_documentation(documentation):
     return final
 
 
-class AnsibleModuleBase:
+class AnsibleModule:
+    template_file = "default_module.j2"
+
     def __init__(self, name, description, definitions, options, required, primaryIdentifier):
         self.name = name
         self.description = description
@@ -227,14 +244,7 @@ class AnsibleModuleBase:
         )
 
         self.write_module(target_dir, content)
-
-
-class AnsibleModule(AnsibleModuleBase):
-    template_file = "default_module.j2"
-
-    def __init__(self, name, description, definitions, options, required, primaryIdentifier):
-        super().__init__(name, description, definitions, options, required, primaryIdentifier)
-
+    
 
 class Definitions:
     def __init__(self, type_name, definitions):
@@ -277,23 +287,20 @@ def main():
     for type_name in RESOURCES:
         print("Generating modules")
         cloudformation = CloudFormationWrapper(boto3.client('cloudformation'))
-        raw_content = cloudformation.generate_docs(
-            type_name
-        )
+        raw_content = cloudformation.generate_docs(type_name)
         json_content = json.loads(raw_content)
-        type_name = json_content.get("typeName")
-        description = json_content.get("description")
+        type_name = json_content.get("typeName")        
         module_name = MODULE_NAME_MAPPING.get(type_name)
 
         definitions = Definitions(type_name, json_content.get("definitions"))
 
         module = AnsibleModule(
             module_name,
-            description=description,
             definitions=definitions,
             options=json_content.get("properties"),
             required=json_content.get("required"),
-            primaryIdentifier=json_content.get("primaryIdentifier")
+            primaryIdentifier=json_content.get("primaryIdentifier"),
+            redOnlyParameters=json_content.get("redOnlyParameters")
         )
 
         if module.is_trusted():
@@ -304,6 +311,7 @@ def main():
 
     files = [f"plugins/modules/{module}.py" for module in module_list]
     files += ["plugins/module_utils/core.py"]
+    files += ["plugins/module_utils/utils.py"]
     ignore_dir = args.target_dir / "tests" / "sanity"
     ignore_dir.mkdir(parents=True, exist_ok=True)
     ignore_content = (

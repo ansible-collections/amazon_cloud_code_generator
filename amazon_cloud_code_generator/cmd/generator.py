@@ -264,12 +264,11 @@ def generate_documentation(module, added_ins, next_version):
     module_name = module.name 
     definitions = module.definitions.definitions
     options = module.options
-    description = module.description
     documentation = {
         "module": module_name,
         "author": "Ansible Cloud Team (@ansible-collections)",
-        "description": [description],
-        "short_description": [description],
+        "description": [],
+        "short_description": [],
         "options": definitions,
         "requirements": [],
         "version_added": added_ins["module"] or next_version,
