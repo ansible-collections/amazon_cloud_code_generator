@@ -53,8 +53,8 @@ class CloudControlResource(object):
     
     @property
     def _waiter_config(self):
-        delay = min(10, self.module.wait_timeout)
-        max_attempts = (self.module.wait_timeout // delay)
+        delay = min(10, self.module.params.get("wait_timeout"))
+        max_attempts = (self.module.params.get("wait_timeout") // delay)
         return {'Delay': delay, 'MaxAttempts': max_attempts}
 
     def list_resources(self, type_name):
