@@ -1,3 +1,5 @@
+import json
+
 from ansible_collections.amazon.aws.plugins.module_utils.ec2 import camel_dict_to_snake_dict
 
 
@@ -19,24 +21,31 @@ def format_list(response):
     return result
 
 
-def diff_dict(d1, d2):
-    d1_keys = set(d1.keys())
-    d2_keys = set(d2.keys())
-    shared_keys = d1_keys.intersection(d2_keys)
-    shared_deltas = {o: (d1[o], d2[o]) for o in shared_keys if d1[o] != d2[o]}
-    added_keys = d2_keys - d1_keys
-    added_deltas = {o: (None, d2[o]) for o in added_keys}
-    deltas = {**shared_deltas, **added_deltas}
-    return parse_deltas(deltas)
+class JsonPatch(list):
+    def __str__(self):
+        return json.dumps(self)
 
 
-def parse_deltas(deltas: dict):
-    res = {}
-    for k, v in deltas.items():
-        if isinstance(v[0], dict):
-            tmp = diff_dict(v[0], v[1])
-            if tmp:
-                res[k] = tmp
-        else:
-            res[k] = v[1]
-    return res
+def list_merge(old, new):
+    l = []
+    for i in old + new:
+        if i not in l:
+            l.append(i)
+    return l
+
+
+def op(operation, path, value):
+    path = "/{0}".format(path.lstrip("/"))
+    return {"op": operation, "path": path, "value": value}
+
+
+# This is a rather naive implementation. Dictionaries within
+# lists and lists within dictionaries will not be merged.
+def make_op(path, old, new, strategy):
+    if isinstance(old, dict):
+        if strategy == "merge":
+            new = dict(old, **new)
+    elif isinstance(old, list):
+        if strategy == "merge":
+            new = list_merge(old, new)
+    return op("replace", path, new)

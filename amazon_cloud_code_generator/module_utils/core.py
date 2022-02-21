@@ -39,7 +39,11 @@ import json
 from itertools import count
 
 from ansible_collections.amazon.aws.plugins.module_utils.ec2 import AWSRetry
-from ansible_collections.amazon.cloud.plugins.module_utils.utils import diff_dict
+from ansible_collections.amazon.cloud.plugins.module_utils.utils import (
+    JsonPatch,
+    make_op,
+    op,
+)
 
 
 class CloudControlResource(object):
@@ -206,22 +210,25 @@ class CloudControlResource(object):
         
         properties = response.get('ResourceDescription', {}).get('Properties', {})
         properties = json.loads(properties)
-        
-        to_be_updated = diff_dict(properties, params)
-        
-        def _format_patch(data):
-            params = []
-            for key in data.keys():
-                result = {"op": "replace", "path": key, "value": data[key]}
-                params.append(result)
-            return json.dumps(params)
 
-        if to_be_updated:
+        patch = JsonPatch()
+        for k, v in params.items():
+            strategy = "merge"
+            if v == properties.get(k):
+                continue
+            if k not in properties:
+                patch.append(op("add", k, v))
+            else:
+                if self.module.params.get("purge_{0}".format(k.lower())):
+                    strategy = "replace"
+                patch.append(make_op(k, properties[k], v, strategy))
+
+        if patch:
             try:
                 if not self.module.check_mode:
                     self.check_in_progress_requests(type_name, identifier)
 
-                    response = self.client.update_resource(TypeName=type_name, Identifier=identifier, PatchDocument=_format_patch(to_be_updated))
+                    response = self.client.update_resource(TypeName=type_name, Identifier=identifier, PatchDocument=str(patch))
 
                     if self.module.params.get('wait'):
                         try:
