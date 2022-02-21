@@ -10,110 +10,7 @@ from typing import List, Dict
 import yaml
 import pkg_resources
 
-
-RESOURCES = [
-    "AWS::S3::Bucket",
-    #"AWS::EC2::SecurityGroup",
-    # "AWS::CloudWatch::Alarm",
-    "AWS::EC2::Instance",
-    # "AWS::AutoScaling::AutoScalingGroup",
-    "AWS::IAM::Policy",
-    # "AWS::IAM::InstanceProfile",
-    # "AWS::ElasticLoadBalancingV2::TargetGroup",
-    # "AWS::AutoScaling::ScalingPolicy",
-    # "AWS::EC2::SecurityGroupIngress",
-    # "AWS::EC2::VPCGatewayAttachment",
-    # "AWS::S3::BucketPolicy",
-    # "AWS::ElasticLoadBalancingV2::LoadBalancer",
-    # "AWS::ApiGateway::Deployment",
-    # "AWS::ApiGateway::RestApi",
-    # "AWS::SSM::Parameter",
-    # "AWS::EC2::SecurityGroupEgress",
-    # "AWS::RDS::DBSubnetGroup",
-    # "AWS::SecretsManager::Secret",
-    # "AWS::EC2::Volume",
-    # "AWS::RDS::DBCluster",
-    # "AWS::EKS::Nodegroup",
-    # "AWS::RDS::DBClusterParameterGroup",
-    # "AWS::EC2::VPCCidrBlock",
-    # "AWS::EC2::NetworkInterfaceAttachment",
-    # "AWS::Route53Resolver::ResolverRuleAssociation",
-    # "AWS::EC2::SubnetCidrBlock",
-]
-
-
-MODULE_NAME_MAPPING = {
-    "AWS::S3::Bucket": "s3_bucket",
-    "AWS::IAM::Policy": "iam_policy",
-    "AWS::EC2::Instance": "ec2_instance",
-}
-
-
-class Description:
-    @classmethod
-    def normalize(cls, string: str) -> List[str]:
-        # TODO: needs cleanup and adapt to the amazon.cloud doc
-        with_no_line_break = []
-        sentences = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', string)
-
-        for l in sentences:
-            if "\n" in l:
-                with_no_line_break += l.split("\n")
-            else:
-                with_no_line_break.append(l)
-
-        with_no_line_break = [cls.write_I(i) for i in with_no_line_break]
-        with_no_line_break = [cls.clean_up(i) for i in with_no_line_break]
-
-        return with_no_line_break
-
-    @classmethod
-    def clean_up(cls, my_string: str) -> str:
-        def rewrite_name(matchobj):
-            name = matchobj.group(1)
-            snake_name = cls.to_snake(name)
-            output = f"C({snake_name})"
-            return output
-
-        def rewrite_link(matchobj):
-            name = matchobj.group(1)
-            if "#" in name and name.split("#")[0]:
-                output = name.split("#")[1]
-            else:
-                output = name
-            return output
-
-        my_string = my_string.replace(" {@term enumerated type}", "")
-        my_string = my_string.replace(" {@term list}", "list")
-        my_string = my_string.replace(" {@term operation}", "operation")
-        my_string = re.sub(r"{@name DayOfWeek}", "day of the week", my_string)
-        my_string = re.sub(r": The\s\S+\senumerated type", ": This option", my_string)
-        my_string = re.sub(r" <p> ", " ", my_string)
-        my_string = re.sub(r" See {@.*}.", "", my_string)
-        my_string = re.sub(r"\({@.*?\)", "", my_string)
-        my_string = re.sub(r"{@code true}", "C(True)", my_string)
-        my_string = re.sub(r"{@code false}", "C(False)", my_string)
-        my_string = re.sub(r"{@code\s+?(.*?)}", r"C(\1)", my_string)
-        my_string = re.sub(r"{@name\s+?([^}]*)}", rewrite_name, my_string)
-
-        return my_string
-    
-    @classmethod
-    def ref_to_parameter(cls, ref: str):
-        splitted = ref.split(".")
-        my_parameter = splitted[-1].replace("-", "_")
-        return cls.to_snake(my_parameter)
-
-    @classmethod
-    def write_I(cls, my_string: str) -> str:
-        refs = {
-            cls.ref_to_parameter(i): i
-            for i in re.findall(r"[A-Z][\w+]+\.[A-Z][\w+\.-]+", my_string)
-        }
-        for parameter_name in sorted(refs.keys(), key=len, reverse=True):
-            ref = refs[parameter_name]
-            my_string = my_string.replace(ref, f"I({parameter_name})")
-        return my_string
+from .resources import RESOURCES, MODULE_NAME_MAPPING
 
 
 def python_type(value: str) -> str:
@@ -127,93 +24,11 @@ def python_type(value: str) -> str:
     return TYPE_MAPPING.get(value, value)
 
 
-def preprocess(a_dict: Dict, subst_dict: Dict):
-    a_dict_copy = copy.copy(a_dict)
-    
-    for key in a_dict_copy.keys():
-        if isinstance(a_dict[key], list):            
-            if key == "enum":
-                a_dict["choices"] = sorted(a_dict.pop(key))
-        elif isinstance(a_dict_copy[key], dict):
-            if key == "properties":
-                a_dict["suboptions"] = a_dict.pop(key)
-                key = "suboptions"
-
-            if  "$ref" in a_dict[key]:
-                lookup_param = a_dict[key]['$ref'].split('/')[-1].strip()
-                if subst_dict.get(lookup_param):
-                    result = subst_dict[lookup_param]
-                    if a_dict[key].get("description") and result.get("description"):
-                        if isinstance(a_dict[key]["description"], list):
-                            a_dict[key]["description"].extend([result.pop("description")])
-                        else:
-                            a_dict[key]["description"] += result.pop("description")
-                    a_dict[key] = result
-            else:
-                preprocess(a_dict[key], subst_dict)
-        elif isinstance(a_dict[key], str): 
-            if key == "type":
-                a_dict[key] = python_type(a_dict_copy[key])
-            if key == "description":
-                a_dict[key] = list(Description.normalize(a_dict_copy[key]))
-            if key == "const":
-                a_dict["default"] = a_dict.pop(key)
-
-
-def ensure_options(a_dict: Dict, definitions: Dict) -> Dict:
-    a_dict_copy = copy.copy(a_dict)
-
-    for k, v in a_dict.items():
-        if "description" in v:
-            a_dict_copy[k]["description"] = list(Description.normalize(v["description"]))
-
-        if "enum" in v:
-            a_dict_copy[k]["choices"] = sorted(a_dict_copy[k].pop("enum"))
-
-        if "type" in v:
-            a_dict_copy[k]["type"] = python_type(v["type"])
-
-        if "$ref" in v:
-            lookup_param = v['$ref'].split('/')[-1].strip()
-            a_dict_copy[k].update(definitions.get(lookup_param))
-            a_dict_copy[k].pop("$ref")
-        
-        if "items" in v:
-            if "$ref" in v["items"]: 
-                lookup_param = v["items"]['$ref'].split('/')[-1].strip()
-                a_dict_copy[k]["items"] = definitions.get(lookup_param)
-    
-    return a_dict_copy
-
-
-def ensure_required(a_dict: Dict):
-    a_dict_copy = copy.copy(a_dict)
-
+def scrub_keys(a_dict: Dict, list_of_keys_to_remove) -> Dict:
+    """Filter a_dict by removing unwanted key: values listed in list_of_keys_to_remove"""   
     if not isinstance(a_dict, dict):
         return a_dict
-    
-    for k, v in a_dict_copy.items():
-        if isinstance(v, dict):
-            if "items" in a_dict[k]:
-                if a_dict[k]["items"].get("type"):
-                    a_dict[k]["elements"] = python_type(a_dict_copy[k]["items"].pop("type"))
-                a_dict[k] = dict(a_dict_copy[k], **a_dict[k].pop("items"))
-                v = a_dict[k]
-
-            if "required" in v and isinstance(v["required"], list):
-                for r in v["required"]:
-                    a_dict[k]["suboptions"][r]["required"] = True
-                a_dict[k].pop("required")
-
-        ensure_required(a_dict[k])
-
-
-def scrub_keys(a_dict: Dict) -> Dict:
-    list_of_keys_to_remove = ["additionalProperties", "insertionOrder", "uniqueItems", "pattern", "examples", "maxLength", "minLength", "format"]
-        
-    if not isinstance(a_dict, dict):
-        return a_dict
-    return {k: v for k, v in ((k, scrub_keys(v)) for k, v in a_dict.items()) if k not in list_of_keys_to_remove}
+    return {k: v for k, v in ((k, scrub_keys(v, list_of_keys_to_remove)) for k, v in a_dict.items()) if k not in list_of_keys_to_remove}
 
 
 def _camel_to_snake(name: str, reversible: bool=False) -> str:
@@ -262,32 +77,158 @@ def get_module_from_config(module: str):
     return False
 
 
+class Description:
+    @classmethod
+    def normalize(cls, string: str) -> List[str]:
+        with_no_line_break = []
+        sentences = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', string)
+
+        for l in sentences:
+            if "\n" in l:
+                with_no_line_break += l.split("\n")
+            else:
+                with_no_line_break.append(l)
+
+        with_no_line_break = [cls.clean_up(i) for i in with_no_line_break]
+
+        return with_no_line_break
+    
+    @classmethod
+    def to_snake(cls, camel_case):
+        return re.sub(r"(?<!^)(?=[A-Z])", "_", camel_case).lower()
+
+    @classmethod
+    def clean_up(cls, my_string: str) -> str:
+        def rewrite_name(matchobj):
+            name = matchobj.group(0)
+            snake_name = cls.to_snake(name)
+            output = f"I({snake_name})"
+            return output
+
+        def rewrite_value(matchobj):
+            name = matchobj.group(0)
+            output = f"C({name})"
+            return output
+
+        def rewrite_link(matchobj):
+            """Find link and replace it with U(link)"""
+            name = matchobj.group(0)
+            output = f"U({name})"
+            return output
+        
+        def format_string(line):
+            """
+            Find CamelCase words (likely to be parameter names, some rewite I(to_snake)
+            Find uppercase words (likely to be values like EXAMPLE or EXAMPLE_EXAMPLE and replace with C(to lower)
+            """
+            words = re.split(r'(https?://[^\s]+)', line)
+            
+            result = []
+            for word in words:
+                lword = re.sub(r"(?:[A-Z])(?:\S?)+(?:[A-Z])(?:[a-z])+", rewrite_name, word)
+                lword = re.sub(r'[A-Z_]+[0-9A-Z]+', rewrite_value, lword)
+                result.append(lword)
+            return " ".join(result)
+                
+        my_string = format_string(my_string)
+        
+        # Find link and replace it with U(link)
+        my_string = re.sub(r'(https?://[^\s]+)', rewrite_link, my_string)
+        
+        # Clean un phrase removing square brackets contained words
+        my_string = re.sub(r"[\[].*?[\]]", "", my_string)
+        
+        return my_string
+
+
+class Documentation:
+    @classmethod
+    def replace_keys(cls, options, definitions):
+        """Sanitize module's options and replace $ref with the correspoding parameters"""
+        dict_copy = copy.copy(options)
+        for key in dict_copy.keys():
+            item = options[key]
+
+            if isinstance(item, list):            
+                if key == "enum":
+                    options["choices"] = sorted(options.pop(key))
+            elif isinstance(item, dict):
+                if key == "properties":
+                    options["suboptions"] = options.pop(key)
+                    key = "suboptions"
+                
+                if  "$ref" in item:
+                    lookup_param = item['$ref'].split('/')[-1].strip()
+                    if definitions.get(lookup_param):
+                        result = definitions[lookup_param]
+                        item.pop("$ref")
+                        if item.get("description") and result.get("description"):
+                            if isinstance(item["description"], list):
+                                item["description"].extend([result.pop("description")])
+                            else:
+                                item["description"] += result.pop("description")
+                        item.update(result)
+                        options[key] = item
+                
+                cls.replace_keys(options[key], definitions)
+            
+            elif isinstance(item, str): 
+                if key == "type":
+                    options[key] = python_type(options[key])
+                if key == "description":
+                    options[key] = list(Description.normalize(options[key]))
+                if key == "const":
+                    options["default"] = options.pop(key)
+    
+    @classmethod
+    def ensure_required(cls, a_dict):
+        """Add required=True for specific parameters"""
+        a_dict_copy = copy.copy(a_dict)
+
+        if not isinstance(a_dict, dict):
+            return a_dict
+        
+        for k, v in a_dict_copy.items():
+            if isinstance(v, dict):
+                if "items" in a_dict[k]:
+                    if a_dict[k]["items"].get("type"):
+                        a_dict[k]["elements"] = python_type(a_dict_copy[k]["items"].pop("type"))
+                    a_dict[k] = dict(a_dict_copy[k], **a_dict[k].pop("items"))
+                    v = a_dict[k]
+
+                if "required" in v and isinstance(v["required"], list):
+                    for r in v["required"]:
+                        a_dict[k]["suboptions"][r]["required"] = True
+                    a_dict[k].pop("required")
+            cls.ensure_required(a_dict[k])
+    
+    @classmethod
+    def preprocess(cls, options, definitions):
+        cls.replace_keys(options, definitions)
+        cls.ensure_required(options)
+
+        list_of_keys_to_remove = ["additionalProperties", "insertionOrder", "uniqueItems", "pattern", "examples", "maxLength", "minLength", "format"]
+        
+        return camel_to_snake(scrub_keys(options, list_of_keys_to_remove))
+
+
 def generate_documentation(module, added_ins: Dict, next_version: str) -> Dict:
+    """Format and generate the AnsibleModule documentation"""
+
     module_name = module.name 
     definitions = module.definitions.definitions
     options = module.options
-    required = module.required
     documentation = {
         "module": module_name,
         "author": "Ansible Cloud Team (@ansible-collections)",
         "description": [],
         "short_description": [],
-        "options": definitions,
+        "options": options,
         "requirements": [],
         "version_added": added_ins["module"] or next_version,
     }
 
-    preprocess(documentation, definitions)
-    _options = ensure_options(options, documentation['options'])
-    ensure_required(_options)
-
-    if required:
-        for r in required:
-            _options[r]["required"] = True
-
-    documentation['options'] = _options
-    _documentation = scrub_keys(documentation)
-    documentation = camel_to_snake(_documentation)
+    Documentation.preprocess(documentation['options'], definitions)
 
     documentation["options"].update(
         {
