@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
 
-import re
 import argparse
 from functools import lru_cache
 import pathlib
 import subprocess
-from typing import Dict, List
+from typing import Dict, List, Optional, TypedDict
 import pkg_resources
 from pbr.version import VersionInfo
 import baron
@@ -16,12 +15,19 @@ import jinja2
 import json
 import boto3
 
-from .generator import CloudFormationWrapper
-from .generator import RESOURCES
-from .generator import MODULE_NAME_MAPPING
-from .generator import generate_documentation
-from .generator import get_module_from_config
-from .generator import _camel_to_snake
+from .generator import (
+    CloudFormationWrapper,
+    generate_documentation
+)
+from .resources import (
+    RESOURCES,
+    MODULE_NAME_MAPPING
+)
+from .utils import (
+    get_module_from_config,
+    _camel_to_snake,
+    scrub_keys
+)
 
 
 def run_git(git_dir: str, *args):
@@ -99,39 +105,6 @@ def _indent(text_block: str, indent: int=0) -> str:
     return result
 
 
-def generate_argument_spec(definitions: Dict) -> str:
-    argument_spec = ""
-    for key in definitions.keys():
-        values = []
-    
-        if definitions[key].get("type"):
-            _type = definitions[key]["type"]
-            values.append(f"'type': '{_type}'")
-            if definitions[key].get("type") == "list":
-                _elements = definitions[key]["elements"]
-                values.append(f"'elements': '{_elements}'")
-        
-        if definitions[key].get("choices"):
-            _choices = ", ".join([f"'{i}'" for i in sorted(definitions[key]["choices"])])
-            values.append(f"'choices': [{_choices}]")
-        
-        if definitions[key].get("required") is not None:
-            _required = definitions[key]["required"]
-            values.append(f"'required': {_required}")
-        
-        if definitions[key].get("default") is not None:
-            _default = definitions[key]["default"]
-            if isinstance(_default, bool):
-                values.append(f"'default': {_default}")
-            else:
-                values.append(f"'default': '{_default}'")
-
-        argument_spec += f"\nargument_spec['{key}'] = "
-        argument_spec += "{" + ", ".join(values) + "}"
-     
-    return argument_spec
-
-
 def generate_params(definitions: Dict) -> str:
     params = ""
     for key in definitions.keys() - ["wait", "wait_timeout"]:
@@ -195,9 +168,33 @@ def format_documentation(documentation: Dict) -> str:
     return final
 
 
-class AnsibleModuleBase:
+def generate_argument_spec(options):
+    list_of_keys_to_remove = ["description"]
+    argument_spec  = ""
+        
+    for key in options.keys():
+        argument_spec += f"\nargument_spec['{key}'] = "
+        argument_spec += str(scrub_keys(options[key], list_of_keys_to_remove))
+    return argument_spec
+
+
+class Schema(TypedDict):
+    typeName: str
+    description: str
+    properties: Dict
+    definitions: Optional[Dict]
+    required: List
+    primaryIdentifier: List
+    readOnlyProperties: Optional[List]
+
+
+
+class AnsibleModule:
+    template_file = "default_module.j2"
+
     def __init__(self, schema: Dict):
-        self.schema = schema        
+        self.schema = schema
+        self.name = MODULE_NAME_MAPPING.get(self.schema.get("typeName"))   
 
     def is_trusted(self):
         if get_module_from_config(self.name) is False:
@@ -221,58 +218,22 @@ class AnsibleModuleBase:
         )
 
         arguments = generate_argument_spec(documentation["options"])
-        documentation_to_str = format_documentation(documentation)
+        documentation_to_string = format_documentation(documentation)
 
         #required_if = self.gen_required_if(self.parameters())
 
         content = jinja2_renderer(
             self.template_file,
             arguments=_indent(arguments, 4),
-            documentation=documentation_to_str,
+            documentation=documentation_to_string,
             name=self.name,
-            resource_type=f"'{self.definitions.type_name}'",
+            resource_type=f"'{self.schema.get('typeName')}'",
             params=_indent(generate_params(documentation["options"]), 4),
-            primary_identifier=_camel_to_snake(self.primaryIdentifier[0].split('/')[-1].strip()),
+            primary_identifier=_camel_to_snake(self.schema.get("primaryIdentifier")[0].split('/')[-1].strip()),
             #required_if=required_if,
         )
 
         self.write_module(target_dir, content)
-
-
-class AnsibleModule(AnsibleModuleBase):
-    template_file = "default_module.j2"
-
-    def __init__(self, *args, **kwargs):
-        super(AnsibleModule, self).__init__(*args, **kwargs)
-        type_name = self.schema.get("typeName")
-        self.definitions = Definitions(type_name, self.schema.get('definitions'))
-        self.name = MODULE_NAME_MAPPING.get(type_name) 
-        self.options = self.schema.get('properties')
-        self.required = self.schema.get("required")
-        self.primaryIdentifier = self.schema.get('primaryIdentifier')
-        self.readOnlyProperties = self.schema.get('readOnlyProperties')
-
-
-class Definitions:
-    def __init__(self, type_name: str, definitions: Dict):
-        self.type_name = type_name
-        self.definitions = definitions
-    
-    @property
-    def type_name(self):
-        return self._type_name
-    
-    @type_name.setter
-    def type_name(self, a):
-        self._type_name = a
-       
-    @property
-    def definitions(self):
-        return self._definitions
-    
-    @definitions.setter
-    def definitions(self, a):
-        self._definitions = a
 
 
 def main():
@@ -295,8 +256,10 @@ def main():
         print("Generating modules")
         cloudformation = CloudFormationWrapper(boto3.client('cloudformation'))
         raw_content = cloudformation.generate_docs(type_name)
-        schema = json.loads(raw_content)
 
+        json_content = json.loads(raw_content)
+        
+        schema: Dict[str, Schema] = json_content
         module = AnsibleModule(schema=schema)
 
         if module.is_trusted():

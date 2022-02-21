@@ -7,74 +7,12 @@
 import copy
 import re
 from typing import List, Dict
-import yaml
-import pkg_resources
 
-from .resources import RESOURCES, MODULE_NAME_MAPPING
-
-
-def python_type(value: str) -> str:
-    TYPE_MAPPING = {
-        "array": "list",
-        "boolean": "bool",
-        "integer": "int",
-        "object": "dict",
-        "string": "str",
-    }
-    return TYPE_MAPPING.get(value, value)
-
-
-def scrub_keys(a_dict: Dict, list_of_keys_to_remove) -> Dict:
-    """Filter a_dict by removing unwanted key: values listed in list_of_keys_to_remove"""   
-    if not isinstance(a_dict, dict):
-        return a_dict
-    return {k: v for k, v in ((k, scrub_keys(v, list_of_keys_to_remove)) for k, v in a_dict.items()) if k not in list_of_keys_to_remove}
-
-
-def _camel_to_snake(name: str, reversible: bool=False) -> str:
-
-    def prepend_underscore_and_lower(m):
-        return '_' + m.group(0).lower()
-
-    if reversible:
-        upper_pattern = r'[A-Z]'
-    else:
-        # Cope with pluralized abbreviations such as TargetGroupARNs
-        # that would otherwise be rendered target_group_ar_ns
-        upper_pattern = r'[A-Z]{3,}s$'
-
-    s1 = re.sub(upper_pattern, prepend_underscore_and_lower, name)
-    # Handle when there was nothing before the plural_pattern
-    if s1.startswith("_") and not name.startswith("_"):
-        s1 = s1[1:]
-    if reversible:
-        return s1
-
-    # Remainder of solution seems to be https://stackoverflow.com/a/1176023
-    first_cap_pattern = r'(.)([A-Z][a-z]+)'
-    all_cap_pattern = r'([a-z0-9])([A-Z]+)'
-    s2 = re.sub(first_cap_pattern, r'\1_\2', s1)
-    return re.sub(all_cap_pattern, r'\1_\2', s2).lower()
-
-
-def camel_to_snake(a_dict: Dict) -> Dict:
-    b_dict = {}
-    for k in a_dict.keys():
-        if isinstance(a_dict[k], dict):
-            b_dict[_camel_to_snake(k)] = camel_to_snake(a_dict[k])
-        else:
-            b_dict[_camel_to_snake(k)] = a_dict[k]
-    return b_dict
-
-
-def get_module_from_config(module: str):
-    raw_content = pkg_resources.resource_string(
-       "amazon_cloud_code_generator", "config/modules.yaml"
-    )
-    for i in yaml.safe_load(raw_content):
-        if module in i:
-            return i[module]
-    return False
+from .utils import (
+    python_type, scrub_keys,
+    camel_to_snake,
+    get_module_from_config
+)
 
 
 class Description:
@@ -120,6 +58,7 @@ class Description:
             """
             Find CamelCase words (likely to be parameter names, some rewite I(to_snake)
             Find uppercase words (likely to be values like EXAMPLE or EXAMPLE_EXAMPLE and replace with C(to lower)
+            # TODO: Cover when there are short uppercase values
             """
             words = re.split(r'(https?://[^\s]+)', line)
             
@@ -211,13 +150,12 @@ class Documentation:
         
         return camel_to_snake(scrub_keys(options, list_of_keys_to_remove))
 
-
 def generate_documentation(module, added_ins: Dict, next_version: str) -> Dict:
     """Format and generate the AnsibleModule documentation"""
 
-    module_name = module.name 
-    definitions = module.definitions.definitions
-    options = module.options
+    module_name = module.name
+    definitions = module.schema.get("definitions")
+    options = module.schema.get("properties")
     documentation = {
         "module": module_name,
         "author": "Ansible Cloud Team (@ansible-collections)",
@@ -228,7 +166,7 @@ def generate_documentation(module, added_ins: Dict, next_version: str) -> Dict:
         "version_added": added_ins["module"] or next_version,
     }
 
-    Documentation.preprocess(documentation['options'], definitions)
+    documentation["options"] = Documentation.preprocess(documentation['options'], definitions)
 
     documentation["options"].update(
         {
