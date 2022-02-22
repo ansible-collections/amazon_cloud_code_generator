@@ -11,7 +11,7 @@ def main():
 
     argument_spec = dict(
         client_token=dict(type='str', no_log=True),
-        state=dict(type='str', choices=['create', 'update', 'delete', 'list', 'describe'], default='create'),
+        state=dict(type='str', choices=['create', 'update', 'delete', 'list', 'describe', 'get'], default='create'),
     )
     {{arguments}}
 
@@ -46,7 +46,7 @@ def main():
     if state == 'delete':
         result = cloud.delete_resource(type_name, identifier)
     
-    if state == 'describe':
+    if state == ('describe', 'get'):
         result = cloud.get_resource(type_name, identifier)
 
     module.exit_json(**result)
