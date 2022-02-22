@@ -5,10 +5,8 @@
 
 
 import copy
-import json
 import re
-from typing import List, Dict
-
+from typing import Iterable, List, Dict
 
 from utils import (
     python_type, scrub_keys,
@@ -20,8 +18,8 @@ from utils import (
 
 class Description:
     @classmethod
-    def normalize(cls, definitions, string: str) -> List[str]:
-        with_no_line_break = []
+    def normalize(cls, definitions: Iterable, string: str) -> List[str]:
+        with_no_line_break: List[str] = []
         sentences = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', string)
 
         for l in sentences:
@@ -36,7 +34,7 @@ class Description:
     
 
     @classmethod
-    def clean_up(cls, definitions, my_string: str) -> str:
+    def clean_up(cls, definitions: Iterable, my_string: str) -> str:
         values = set()
         keys_to_keep = set(["JavaScript", "EventBridge", "CloudFormation", "CloudWatch", "ACLs", "XMLHttpRequest"])
         values_to_keep = set(["PUT"])
@@ -54,7 +52,6 @@ class Description:
             
         def rewrite_name(matchobj):
             name = matchobj.group(0)
-            print(name)
             if name not in keys_to_keep:
                 snake_name = _camel_to_snake(name)
                 output = f"I({snake_name})"
@@ -103,12 +100,8 @@ class Description:
         return my_string
 
 
-class Documentation:
-    def __init__(self, options, definitions) -> None:
-        self.options = options
-        self.definitions = definitions
-
-    def replace_keys(self, options, definitions):
+class Documentation:    
+    def replace_keys(self, options: Iterable, definitions: Iterable):
         """Sanitize module's options and replace $ref with the correspoding parameters"""
         dict_copy = copy.copy(options)
         for key in dict_copy.keys():
@@ -149,7 +142,7 @@ class Documentation:
                 if key == "const":
                     options["default"] = options.pop(key)
     
-    def ensure_required(self, a_dict):
+    def ensure_required(self, a_dict: Iterable):
         """Add required=True for specific parameters"""
         a_dict_copy = copy.copy(a_dict)
 
@@ -168,35 +161,28 @@ class Documentation:
                     for r in v["required"]:
                         a_dict[k]["suboptions"][r]["required"] = True
                     a_dict[k].pop("required")
+                
             self.ensure_required(a_dict[k])
-
-    def normalize_description(self, dictionary):
-        dict_copy = copy.copy(dictionary)
-        for key in dict_copy.keys():
-            item = dictionary[key]
-
-            if isinstance(item, dict):
-                self.normalize_description(dictionary[key])
-            
-            else:
-                print("key", key)
-                if key == "description":
-                    dictionary[key] = Description.normalize(self.options, item)
-
                         
-    def preprocess(self):
+    def preprocess(self) -> Iterable:
         list_of_keys_to_remove = ["additionalProperties", "insertionOrder", "uniqueItems", "pattern", "examples", "maxLength", "minLength", "format"]
         self.replace_keys(self.options, self.definitions)
         self.ensure_required(self.options)
+        
+        if self.required:
+            for r in self.required:
+                self.options[r]["required"] = True
+        
         return camel_to_snake(scrub_keys(self.options, list_of_keys_to_remove))
 
-def generate_documentation(module, added_ins: Dict, next_version: str) -> Dict:
+def generate_documentation(module, added_ins: Dict, next_version: str) -> Iterable:
     """Format and generate the AnsibleModule documentation"""
 
     module_name = module.name
     definitions = module.schema.get("definitions")
     options = module.schema.get("properties")
-    documentation = {
+    required = module.schema.get("required")
+    documentation: Iterable = {
         "module": module_name,
         "author": "Ansible Cloud Team (@ansible-collections)",
         "description": [],
@@ -206,9 +192,11 @@ def generate_documentation(module, added_ins: Dict, next_version: str) -> Dict:
         "version_added": added_ins["module"] or next_version,
     }
     
-    docs = Documentation(options, definitions)
+    docs = Documentation()
+    docs.options = options
+    docs.definitions = definitions
+    docs.required = required
     documentation["options"] = docs.preprocess()
-
     documentation["options"].update(
         {
             "wait": {

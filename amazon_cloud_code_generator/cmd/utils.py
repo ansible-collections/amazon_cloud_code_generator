@@ -7,7 +7,7 @@
 import re
 import yaml
 import pkg_resources
-from typing import List, Dict
+from typing import Dict
 
 
 def python_type(value: str) -> str:
@@ -72,3 +72,4 @@ def get_module_from_config(module: str):
         if module in i:
             return i[module]
     return False
+

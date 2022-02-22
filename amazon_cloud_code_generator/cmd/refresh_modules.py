@@ -5,7 +5,7 @@ import argparse
 from functools import lru_cache
 import pathlib
 import subprocess
-from typing import Dict, List, Optional, TypedDict
+from typing import Dict, Iterable, List, Optional, TypedDict
 import pkg_resources
 from pbr.version import VersionInfo
 import baron
@@ -15,15 +15,15 @@ import jinja2
 import json
 import boto3
 
-from .generator import (
+from generator import (
     CloudFormationWrapper,
     generate_documentation
 )
-from .resources import (
+from resources import (
     RESOURCES,
     MODULE_NAME_MAPPING
 )
-from .utils import (
+from utils import (
     get_module_from_config,
     _camel_to_snake,
     scrub_keys
@@ -43,10 +43,10 @@ def run_git(git_dir: str, *args):
 
 
 @lru_cache(maxsize=None)
-def file_by_tag(git_dir:  str) -> List[str]:
+def file_by_tag(git_dir: str) -> Dict:
     tags = run_git(git_dir, "tag")
 
-    files_by_tag = {}
+    files_by_tag: Dict= {}
     for tag in tags:
         files_by_tag[tag] = run_git(git_dir, "ls-tree", "-r", "--name-only", tag)
 
@@ -97,7 +97,7 @@ def jinja2_renderer(template_file, **kwargs):
 
 
 def _indent(text_block: str, indent: int=0) -> str:
-    result = ""
+    result: str = ""
     for l in text_block.split("\n"):
         result += " " * indent
         result += l
@@ -105,30 +105,28 @@ def _indent(text_block: str, indent: int=0) -> str:
     return result
 
 
-def generate_params(definitions: Dict) -> str:
-    params = ""
+def generate_params(definitions: Iterable) -> str:
+    params: str = ""
     for key in definitions.keys() - ["wait", "wait_timeout"]:
         params += f"\nparams['{key}'] = module.params.get('{key}')"
     
     return params
 
 
-# def gen_required_if(parameters):
-#     # if state in create, update, delete -> primaryIdentifier
-#     # if state create -> required params (ex, iam_policy)
-#     by_states = DefaultDict(list)
-#     for parameter in parameters:
-#         for operation in parameter.get("_required_with_operations", []):
-#             by_states[ansible_state(operation)].append(parameter["name"])
-#     entries = []
-#     for operation, fields in by_states.items():
-#         state = ansible_state(operation)
-#         if "state" in entries:
-#             entries.append(["state", state, sorted(set(fields)), True])
-#     return entries
+def gen_required_if(parameters: List[str], required: List[str]) -> List:
+    states = ["update", "delete", "get"]
+    entries = []
+    if parameters:
+        identifier = parameters[0].split('/')[-1].strip()
+        if required:
+            _required = [_camel_to_snake(r) for r in required]
+            entries.append(["state", "create", [_camel_to_snake(identifier), *_required], True])
+        [ entries.append(["state", state, [_camel_to_snake(identifier)], True]) for state in states ]
+    
+    return entries
 
 
-def format_documentation(documentation: Dict) -> str:
+def format_documentation(documentation: Iterable) -> str:
     yaml.Dumper.ignore_aliases = lambda *args : True
 
     def _sanitize(input):
@@ -154,7 +152,7 @@ def format_documentation(documentation: Dict) -> str:
         "notes",
     ]
 
-    final = "r'''\n"
+    final: str = "r'''\n"
     for i in keys:
         if i not in documentation:
             continue
@@ -168,9 +166,9 @@ def format_documentation(documentation: Dict) -> str:
     return final
 
 
-def generate_argument_spec(options):
+def generate_argument_spec(options: Dict) -> str:
     list_of_keys_to_remove = ["description"]
-    argument_spec  = ""
+    argument_spec: str = ""
         
     for key in options.keys():
         argument_spec += f"\nargument_spec['{key}'] = "
@@ -188,15 +186,14 @@ class Schema(TypedDict):
     readOnlyProperties: Optional[List]
 
 
-
 class AnsibleModule:
     template_file = "default_module.j2"
 
-    def __init__(self, schema: Dict):
+    def __init__(self, schema: Iterable):
         self.schema = schema
         self.name = MODULE_NAME_MAPPING.get(self.schema.get("typeName"))   
 
-    def is_trusted(self):
+    def is_trusted(self) -> bool:
         if get_module_from_config(self.name) is False:
             print(f"- do not build: {self.name}")
         else:
@@ -220,7 +217,7 @@ class AnsibleModule:
         arguments = generate_argument_spec(documentation["options"])
         documentation_to_string = format_documentation(documentation)
 
-        #required_if = self.gen_required_if(self.parameters())
+        required_if = gen_required_if(self.schema.get("primaryIdentifier"), self.schema.get("required"))
 
         content = jinja2_renderer(
             self.template_file,
@@ -230,7 +227,7 @@ class AnsibleModule:
             resource_type=f"'{self.schema.get('typeName')}'",
             params=_indent(generate_params(documentation["options"]), 4),
             primary_identifier=_camel_to_snake(self.schema.get("primaryIdentifier")[0].split('/')[-1].strip()),
-            #required_if=required_if,
+            required_if=required_if,
         )
 
         self.write_module(target_dir, content)

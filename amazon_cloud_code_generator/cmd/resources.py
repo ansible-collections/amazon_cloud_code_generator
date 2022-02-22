@@ -10,7 +10,7 @@ RESOURCES = [
     # "AWS::CloudWatch::Alarm",
     "AWS::EC2::Instance",
     # "AWS::AutoScaling::AutoScalingGroup",
-    #"AWS::IAM::Policy",
+    "AWS::IAM::Policy",
     # "AWS::IAM::InstanceProfile",
     # "AWS::ElasticLoadBalancingV2::TargetGroup",
     # "AWS::AutoScaling::ScalingPolicy",
@@ -37,6 +37,6 @@ RESOURCES = [
 
 MODULE_NAME_MAPPING = {
     "AWS::S3::Bucket": "s3_bucket",
-    #"AWS::IAM::Policy": "iam_policy",
+    "AWS::IAM::Policy": "iam_policy",
     "AWS::EC2::Instance": "ec2_instance",
 }
