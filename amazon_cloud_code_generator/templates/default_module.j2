@@ -4,7 +4,7 @@ import json
 
 from ansible_collections.amazon.aws.plugins.module_utils.core import AnsibleAWSModule
 from ansible_collections.amazon.cloud.plugins.module_utils.core import CloudControlResource
-from ansible.module_utils.common.dict_transformations import snake_dict_to_camel_dict
+from ansible_collections.amazon.cloud.plugins.module_utils.utils import snake_dict_to_camel_dict
 
 
 def main():
@@ -34,22 +34,26 @@ def main():
     state = module.params.get('state')
     identifier = module.params.get('{{primary_identifier}}')
 
-    if state == 'list':
-        result = cloud.list_resources(type_name)
-
-    if state == 'create':
-        result = cloud.create_resource(type_name, identifier, desired_state)            
-
-    if state == 'update':
-        result = cloud.update_resource(type_name, identifier, params_to_set)
-      
-    if state == 'delete':
-        result = cloud.delete_resource(type_name, identifier)
+    results = {"changed": False, "result": []}
     
-    if state == ('describe', 'get'):
-        result = cloud.get_resource(type_name, identifier)
+    if state == "list":
+        results["result"] = cloud.list_resources(type_name)
+    
+    if state == ("describe", "get"):
+        results["result"] = cloud.get_resource(type_name, identifier)
 
-    module.exit_json(**result)
+    if state == "create":
+        results["changed"] |= cloud.create_resource(type_name, identifier, desired_state)
+        results["result"] = cloud.get_resource(type_name, identifier)
+
+    if state == "update":
+        results["changed"] |= cloud.update_resource(type_name, identifier, params_to_set)
+        results["result"] = cloud.get_resource(type_name, identifier)
+
+    if state == "delete":
+        results["changed"] |= cloud.delete_resource(type_name, identifier)
+
+    module.exit_json(**results)
 
 
 if __name__ == '__main__':

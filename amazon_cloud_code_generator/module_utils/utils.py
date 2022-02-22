@@ -1,23 +1,35 @@
 import json
+from typing import Iterable, List
 
-from ansible_collections.amazon.aws.plugins.module_utils.ec2 import camel_dict_to_snake_dict
+from ansible.module_utils.common.dict_transformations import (
+    camel_dict_to_snake_dict,
+    snake_dict_to_camel_dict
+)
 
 
-def format_list(response):
-    result = list()
-    identifier = response.get('ResourceDescription', {}).get('Identifier', None)
-
+def _jsonify(data):
+    identifier = data.get('Identifier', None)
+    properties = data.get('Properties', None)
     # Convert the Resource Properties from a str back to json
-    properties = response.get('ResourceDescription', {}).get('Properties', {})
-    properties = json.loads(properties)
-    
-    bucket = dict()
-    bucket['Identifier'] = identifier
-    bucket['properties'] = properties
-    result.append(bucket)
-    
-    result = [camel_dict_to_snake_dict(res) for res in result]
+    data = {
+        'identifier': identifier,
+        'properties': json.loads(properties)
+    }
+    return data
 
+
+def normalize_response(response: Iterable):
+    result: List = []
+
+    resource_descriptions = response.get('ResourceDescription', {}) or response.get('ResourceDescriptions', [])
+    if isinstance(resource_descriptions, list):
+        res = [_jsonify(r_d) for r_d in resource_descriptions]
+        _result = [camel_dict_to_snake_dict(r) for r in res]
+        result.append(_result)
+    else:
+        result.append(_jsonify(resource_descriptions))
+        result = [camel_dict_to_snake_dict(res) for res in result]
+    
     return result
 
 
