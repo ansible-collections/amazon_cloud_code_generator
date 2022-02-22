@@ -5,19 +5,22 @@
 
 
 import copy
+import json
 import re
 from typing import List, Dict
 
-from .utils import (
+
+from utils import (
     python_type, scrub_keys,
     camel_to_snake,
-    get_module_from_config
+    get_module_from_config,
+    _camel_to_snake
 )
 
 
 class Description:
     @classmethod
-    def normalize(cls, string: str) -> List[str]:
+    def normalize(cls, definitions, string: str) -> List[str]:
         with_no_line_break = []
         sentences = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', string)
 
@@ -27,26 +30,43 @@ class Description:
             else:
                 with_no_line_break.append(l)
 
-        with_no_line_break = [cls.clean_up(i) for i in with_no_line_break]
-
+        with_no_line_break = [cls.clean_up(definitions, i) for i in with_no_line_break]
+        
         return with_no_line_break
     
-    @classmethod
-    def to_snake(cls, camel_case):
-        return re.sub(r"(?<!^)(?=[A-Z])", "_", camel_case).lower()
 
     @classmethod
-    def clean_up(cls, my_string: str) -> str:
+    def clean_up(cls, definitions, my_string: str) -> str:
+        values = set()
+        keys_to_keep = set(["JavaScript", "EventBridge", "CloudFormation", "CloudWatch", "ACLs", "XMLHttpRequest"])
+        values_to_keep = set(["PUT"])
+        
+        def get_values(a_dict):
+            for key, value in a_dict.items():
+                if isinstance(value, dict):
+                    yield from get_values(value)
+                else:
+                    if key in ("choices", "enum"):
+                        yield value
+        
+        for value in get_values(definitions):
+            values |= set(value)
+            
         def rewrite_name(matchobj):
             name = matchobj.group(0)
-            snake_name = cls.to_snake(name)
-            output = f"I({snake_name})"
-            return output
+            print(name)
+            if name not in keys_to_keep:
+                snake_name = _camel_to_snake(name)
+                output = f"I({snake_name})"
+                return output
+            return name
 
         def rewrite_value(matchobj):
             name = matchobj.group(0)
-            output = f"C({name})"
-            return output
+            if name in values and name not in values_to_keep:
+                output = f"C({name})"
+                return output
+            return name
 
         def rewrite_link(matchobj):
             """Find link and replace it with U(link)"""
@@ -58,16 +78,10 @@ class Description:
             """
             Find CamelCase words (likely to be parameter names, some rewite I(to_snake)
             Find uppercase words (likely to be values like EXAMPLE or EXAMPLE_EXAMPLE and replace with C(to lower)
-            # TODO: Cover when there are short uppercase values
             """
-            words = re.split(r'(https?://[^\s]+)', line)
-            
-            result = []
-            for word in words:
-                lword = re.sub(r"(?:[A-Z])(?:\S?)+(?:[A-Z])(?:[a-z])+", rewrite_name, word)
-                lword = re.sub(r'[A-Z_]+[0-9A-Z]+', rewrite_value, lword)
-                result.append(lword)
-            return " ".join(result)
+            lword = re.sub(r"([A-Z]+[A-Za-z]+)+([A-Z][a-z]+)+", rewrite_name, line) 
+            lword = re.sub(r'[A-Z_]+[0-9A-Z]+', rewrite_value, lword)
+            return lword
                 
         my_string = format_string(my_string)
         
@@ -77,12 +91,24 @@ class Description:
         # Clean un phrase removing square brackets contained words
         my_string = re.sub(r"[\[].*?[\]]", "", my_string)
         
+        # Substituting one or more white space which is at beginning and end of the string with an empty string
+        my_string = re.sub(r"^\s+|\s+$", "", my_string)
+        
+        my_string = re.sub(r"TRUE", "C(True)", my_string)
+        
+        # Remove quotes
+        my_string = my_string.replace('"', '')
+        my_string = my_string.replace("'", '')
+        
         return my_string
 
 
 class Documentation:
-    @classmethod
-    def replace_keys(cls, options, definitions):
+    def __init__(self, options, definitions) -> None:
+        self.options = options
+        self.definitions = definitions
+
+    def replace_keys(self, options, definitions):
         """Sanitize module's options and replace $ref with the correspoding parameters"""
         dict_copy = copy.copy(options)
         for key in dict_copy.keys():
@@ -103,24 +129,27 @@ class Documentation:
                         item.pop("$ref")
                         if item.get("description") and result.get("description"):
                             if isinstance(item["description"], list):
-                                item["description"].extend([result.pop("description")])
+                                item["description"].extend(result.pop("description"))
+                                item["description"] = list(Description.normalize(self.definitions, item["description"]))
                             else:
                                 item["description"] += result.pop("description")
+                                item["description"] = list(Description.normalize(self.definitions, item["description"]))
+                                
                         item.update(result)
                         options[key] = item
                 
-                cls.replace_keys(options[key], definitions)
+                
+                self.replace_keys(options[key], definitions)
             
             elif isinstance(item, str): 
                 if key == "type":
                     options[key] = python_type(options[key])
                 if key == "description":
-                    options[key] = list(Description.normalize(options[key]))
+                    options[key] = list(Description.normalize(self.definitions, options[key]))
                 if key == "const":
                     options["default"] = options.pop(key)
     
-    @classmethod
-    def ensure_required(cls, a_dict):
+    def ensure_required(self, a_dict):
         """Add required=True for specific parameters"""
         a_dict_copy = copy.copy(a_dict)
 
@@ -139,16 +168,27 @@ class Documentation:
                     for r in v["required"]:
                         a_dict[k]["suboptions"][r]["required"] = True
                     a_dict[k].pop("required")
-            cls.ensure_required(a_dict[k])
-    
-    @classmethod
-    def preprocess(cls, options, definitions):
-        cls.replace_keys(options, definitions)
-        cls.ensure_required(options)
+            self.ensure_required(a_dict[k])
 
+    def normalize_description(self, dictionary):
+        dict_copy = copy.copy(dictionary)
+        for key in dict_copy.keys():
+            item = dictionary[key]
+
+            if isinstance(item, dict):
+                self.normalize_description(dictionary[key])
+            
+            else:
+                print("key", key)
+                if key == "description":
+                    dictionary[key] = Description.normalize(self.options, item)
+
+                        
+    def preprocess(self):
         list_of_keys_to_remove = ["additionalProperties", "insertionOrder", "uniqueItems", "pattern", "examples", "maxLength", "minLength", "format"]
-        
-        return camel_to_snake(scrub_keys(options, list_of_keys_to_remove))
+        self.replace_keys(self.options, self.definitions)
+        self.ensure_required(self.options)
+        return camel_to_snake(scrub_keys(self.options, list_of_keys_to_remove))
 
 def generate_documentation(module, added_ins: Dict, next_version: str) -> Dict:
     """Format and generate the AnsibleModule documentation"""
@@ -161,12 +201,13 @@ def generate_documentation(module, added_ins: Dict, next_version: str) -> Dict:
         "author": "Ansible Cloud Team (@ansible-collections)",
         "description": [],
         "short_description": [],
-        "options": options,
+        "options": {},
         "requirements": [],
         "version_added": added_ins["module"] or next_version,
     }
-
-    documentation["options"] = Documentation.preprocess(documentation['options'], definitions)
+    
+    docs = Documentation(options, definitions)
+    documentation["options"] = docs.preprocess()
 
     documentation["options"].update(
         {
