@@ -8,7 +8,7 @@ import copy
 import re
 from typing import Iterable, List, Dict
 
-from utils import (
+from .utils import (
     python_type, scrub_keys,
     camel_to_snake,
     get_module_from_config,

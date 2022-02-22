@@ -15,15 +15,15 @@ import jinja2
 import json
 import boto3
 
-from generator import (
+from .generator import (
     CloudFormationWrapper,
     generate_documentation
 )
-from resources import (
+from .resources import (
     RESOURCES,
     MODULE_NAME_MAPPING
 )
-from utils import (
+from .utils import (
     get_module_from_config,
     _camel_to_snake,
     scrub_keys
