@@ -5,6 +5,7 @@
 
 
 import copy
+from curses.ascii import isdigit
 import re
 from typing import Iterable, List, Dict
 
@@ -72,7 +73,7 @@ class Description:
             return output
         
         def to_lower(match):
-            return f"I({match.group(0).lower()})" if match.group(0).isalpha() else match.group(0)
+            return f"I({match.group(0).lower()})" if match.group(0).isalpha() and match.group(0) != "Unicode" else f"C({match.group(0)})" if match.group(0).isdigit() else match.group(0)      
         
         def format_string(line):
             """
