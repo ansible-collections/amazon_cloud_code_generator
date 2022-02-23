@@ -93,7 +93,7 @@ class CloudControlResource(object):
                 results.append(normalize_response(response))
             else:
                 break
-        
+
         # TODO: append properties for each resource
         # for each in results:
         #     resource_descriptions = each.get("ResourceDescriptions", [])
@@ -130,6 +130,8 @@ class CloudControlResource(object):
 
     def get_resource(self, type_name, primary_identifier):
         # This is the "describe" equivalent for CCAPI
+        response = {}
+
         try:
             response = self.client.get_resource(
                 TypeName=type_name, Identifier=primary_identifier
@@ -141,7 +143,7 @@ class CloudControlResource(object):
             botocore.exceptions.ClientError,
         ) as e:
             self.module.fail_json_aws(e, msg="Failed to retrieve resource")
-        
+
         result = normalize_response(response)
         return result
 

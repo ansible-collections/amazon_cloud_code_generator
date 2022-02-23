@@ -1,7 +1,13 @@
 ---
-- ec2_instance:
-- iam_policy:
 - s3_bucket:
     documentation:
-      short_description: Manage S3 buckets in AWS, DigitalOcean, Ceph, Walrus, FakeS3 and StorageGRID
-      description: Manage S3 buckets in AWS, DigitalOcean, Ceph, Walrus, FakeS3 and StorageGRID.
+      short_description: Manage S3 buckets
+      description: Create and manage S3 buckets (list, create, update, describe, delete).
+- logs_log_group:
+    documentation:
+      short_description: Create and manage log groups
+      description: Create and manage log groups (list, create, update, describe, delete).
+- ec2_instance:
+    documentation:
+      short_description: Create and manage EC2 instances
+      description: Manage EC2 instances (list, create, update, describe, delete).

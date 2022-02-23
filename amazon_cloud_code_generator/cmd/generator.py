@@ -71,32 +71,39 @@ class Description:
             output = f"U({name})"
             return output
         
+        def to_lower(match):
+            return f"I({match.group(0).lower()})" if match.group(0).isalpha() else match.group(0)
+        
         def format_string(line):
             """
             Find CamelCase words (likely to be parameter names, some rewite I(to_snake)
             Find uppercase words (likely to be values like EXAMPLE or EXAMPLE_EXAMPLE and replace with C(to lower)
             """
-            lword = re.sub(r"([A-Z]+[A-Za-z]+)+([A-Z][a-z]+)+", rewrite_name, line) 
+            lword = re.sub(r"([A-Z]+[A-Za-z]+)+([A-Z][a-z]+)+", rewrite_name, line)
+            _lword = lword.split(":")
+            if len(_lword) > 1:
+                _lword[1] = re.sub(r'[A-Z][a-z]+', to_lower, _lword[1])
+                lword = ":".join(_lword)
             lword = re.sub(r'[A-Z_]+[0-9A-Z]+', rewrite_value, lword)
             return lword
                 
         my_string = format_string(my_string)
-        
+
         # Find link and replace it with U(link)
         my_string = re.sub(r'(https?://[^\s]+)', rewrite_link, my_string)
-        
+
         # Clean un phrase removing square brackets contained words
         my_string = re.sub(r"[\[].*?[\]]", "", my_string)
-        
+
         # Substituting one or more white space which is at beginning and end of the string with an empty string
         my_string = re.sub(r"^\s+|\s+$", "", my_string)
         
         my_string = re.sub(r"TRUE", "C(True)", my_string)
-        
+
         # Remove quotes
         my_string = my_string.replace('"', '')
         my_string = my_string.replace("'", '')
-        
+
         return my_string
 
 
@@ -191,7 +198,7 @@ def generate_documentation(module, added_ins: Dict, next_version: str) -> Iterab
         "requirements": [],
         "version_added": added_ins["module"] or next_version,
     }
-    
+
     docs = Documentation()
     docs.options = options
     docs.definitions = definitions
@@ -199,6 +206,19 @@ def generate_documentation(module, added_ins: Dict, next_version: str) -> Iterab
     documentation["options"] = docs.preprocess()
     documentation["options"].update(
         {
+            "state": {
+                "description": [
+                    "Goal state for resouirce.",
+                    "I(state=create) creates the resouce.",
+                    "I(state=update) updates the existing resouce.",
+                    "I(state=delete) ensures an existing instance is deleted.",
+                    "I(state=list) get all the existing resources.",
+                    "I(state=describe) or I(state=get) retrieves information on an existing resource.",
+                ],
+                "type": "str",
+                "choices": ['create', 'update', 'delete', 'list', 'describe', 'get'],
+                "default": "create",
+            },
             "wait": {
                 "description": ["Wait for operation to complete before returning."],
                 "type": "bool",
