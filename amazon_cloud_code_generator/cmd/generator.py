@@ -37,8 +37,8 @@ class Description:
     @classmethod
     def clean_up(cls, definitions: Iterable, my_string: str) -> str:
         values = set()
-        keys_to_keep = set(["JavaScript", "EventBridge", "CloudFormation", "CloudWatch", "ACLs", "XMLHttpRequest"])
-        values_to_keep = set(["PUT"])
+        keys_to_keep = set(["JavaScript", "EventBridge", "CloudFormation", "CloudWatch", "ACLs", "XMLHttpRequest", "DDThh"])
+        values_to_keep = set(["PUT", "S3"])
         
         def get_values(a_dict):
             for key, value in a_dict.items():
@@ -52,56 +52,66 @@ class Description:
             values |= set(value)
             
         def rewrite_name(matchobj):
+            """Rewrite option name to I(camel_to_snake(option))"""
             name = matchobj.group(0)
             if name not in keys_to_keep:
                 snake_name = _camel_to_snake(name)
                 output = f"I({snake_name})"
                 return output
             return name
-
+        
         def rewrite_value(matchobj):
+            """Find link and replace it with U(link)"""
             name = matchobj.group(0)
-            if name in values and name not in values_to_keep:
+            if name.isalpha():
+                if name in values and name not in values_to_keep:
+                    output = f"C({name})"
+                    return output
+            else:
                 output = f"C({name})"
                 return output
-            return name
 
         def rewrite_link(matchobj):
-            """Find link and replace it with U(link)"""
+            """Find link and replace it with U(link)."""
             name = matchobj.group(0)
             output = f"U({name})"
             return output
         
-        def to_lower(match):
-            return f"I({match.group(0).lower()})" if match.group(0).isalpha() and match.group(0) != "Unicode" else f"C({match.group(0)})" if match.group(0).isdigit() else match.group(0)      
-        
+        def find_match(pattern, my_string):
+            """Find matching string using a pattern and rewrite it as needed."""
+            matches = re.findall(pattern, my_string)
+            if matches:
+                output = re.sub(r'\d+', rewrite_value, my_string)
+                output = re.sub(r'(?<!^)(?<!\. )[A-Z][a-z]+', rewrite_name, output)
+                return output
+            return my_string
+
         def format_string(line):
             """
-            Find CamelCase words (likely to be parameter names, some rewite I(to_snake)
-            Find uppercase words (likely to be values like EXAMPLE or EXAMPLE_EXAMPLE and replace with C(to lower)
+            Find CamelCase words (likely to be parameter names, some rewite I(to_snake).
+            Find uppercase words (likely to be values like EXAMPLE or EXAMPLE_EXAMPLE and rewrite with C(EXAMPLE)).
             """
             lword = re.sub(r"([A-Z]+[A-Za-z]+)+([A-Z][a-z]+)+", rewrite_name, line)
-            _lword = lword.split(":")
-            if len(_lword) > 1:
-                _lword[1] = re.sub(r'[A-Z][a-z]+', to_lower, _lword[1])
-                lword = ":".join(_lword)
             lword = re.sub(r'[A-Z_]+[0-9A-Z]+', rewrite_value, lword)
             return lword
-                
+        
         my_string = format_string(my_string)
 
         # Find link and replace it with U(link)
         my_string = re.sub(r'(https?://[^\s]+)', rewrite_link, my_string)
 
-        # Clean un phrase removing square brackets contained words
+        # Cleanup phrase removing square brackets contained words
         my_string = re.sub(r"[\[].*?[\]]", "", my_string)
+            
+        my_string = find_match("values are:", my_string)
+        my_string = find_match("following properties:", my_string)
 
-        # Substituting one or more white space which is at beginning and end of the string with an empty string
+        # Substitute one or more white space which is at beginning and end of the string with an empty string
         my_string = re.sub(r"^\s+|\s+$", "", my_string)
         
         my_string = re.sub(r"TRUE", "C(True)", my_string)
 
-        # Remove quotes
+        # Cleanup some quotes
         my_string = my_string.replace('"', '')
         my_string = my_string.replace("'", '')
 
@@ -130,12 +140,12 @@ class Documentation:
                         item.pop("$ref")
                         if item.get("description") and result.get("description"):
                             if isinstance(item["description"], list):
-                                item["description"].extend(result.pop("description"))
-                                item["description"] = list(Description.normalize(self.definitions, item["description"]))
+                               item["description"].extend(result.pop("description"))
+                               item["description"] = list(Description.normalize(self.definitions, item["description"]))
                             else:
-                                item["description"] += result.pop("description")
-                                item["description"] = list(Description.normalize(self.definitions, item["description"]))
-                                
+                               item["description"] += result.pop("description")
+                               item["description"] = list(Description.normalize(self.definitions, item["description"]))
+
                         item.update(result)
                         options[key] = item
                 
