@@ -5,7 +5,6 @@
 
 
 import copy
-from curses.ascii import isdigit
 import re
 from typing import Iterable, List, Dict
 
@@ -68,8 +67,10 @@ class Description:
                     output = f"C({name})"
                     return output
             else:
-                output = f"C({name})"
-                return output
+                if name not in values_to_keep:
+                    output = f"C({name})"
+                    return output
+            return name
 
         def rewrite_link(matchobj):
             """Find link and replace it with U(link)."""
