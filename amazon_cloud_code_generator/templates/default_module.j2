@@ -47,7 +47,9 @@ def main():
         results["result"] = cloud.get_resource(type_name, identifier)
 
     if state == "update":
-        results["changed"] |= cloud.update_resource(type_name, identifier, params_to_set)
+        # Ignore createOnlyProperties that can be set only during resource creation
+        create_only_params = {{create_only_properties}}
+        results["changed"] |= cloud.update_resource(type_name, identifier, params_to_set, create_only_params)
         results["result"] = cloud.get_resource(type_name, identifier)
 
     if state == "delete":

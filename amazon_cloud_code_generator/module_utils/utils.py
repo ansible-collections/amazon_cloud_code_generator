@@ -1,5 +1,6 @@
+import re
 import json
-from typing import Iterable, List
+from typing import Iterable, List, Dict
 
 from ansible.module_utils.common.dict_transformations import (
     camel_dict_to_snake_dict,
@@ -7,7 +8,7 @@ from ansible.module_utils.common.dict_transformations import (
 )
 
 
-def _jsonify(data):
+def _jsonify(data: Dict) -> Dict:
     identifier = data.get('Identifier', None)
     properties = data.get('Properties', None)
     # Convert the Resource Properties from a str back to json
@@ -16,6 +17,43 @@ def _jsonify(data):
         'properties': json.loads(properties)
     }
     return data
+
+
+def camel_to_snake(name: str, reversible: bool=False) -> str:
+
+    def prepend_underscore_and_lower(m):
+        return '_' + m.group(0).lower()
+
+    if reversible:
+        upper_pattern = r'[A-Z]'
+    else:
+        # Cope with pluralized abbreviations such as TargetGroupARNs
+        # that would otherwise be rendered target_group_ar_ns
+        upper_pattern = r'[A-Z]{3,}s$'
+
+    s1 = re.sub(upper_pattern, prepend_underscore_and_lower, name)
+    # Handle when there was nothing before the plural_pattern
+    if s1.startswith("_") and not name.startswith("_"):
+        s1 = s1[1:]
+    if reversible:
+        return s1
+
+    # Remainder of solution seems to be https://stackoverflow.com/a/1176023
+    first_cap_pattern = r'(.)([A-Z][a-z]+)'
+    all_cap_pattern = r'([a-z0-9])([A-Z]+)'
+    s2 = re.sub(first_cap_pattern, r'\1_\2', s1)
+    return re.sub(all_cap_pattern, r'\1_\2', s2).lower()
+
+
+def scrub_keys(a_dict: Dict, list_of_keys_to_remove: List[str]) -> Dict:
+    """Filter a_dict by removing unwanted key: values listed in list_of_keys_to_remove"""
+    if not isinstance(a_dict, dict):
+        return a_dict
+    return {
+        k: v
+        for k, v in a_dict.items()
+        if k not in list_of_keys_to_remove
+    }
 
 
 def normalize_response(response: Iterable):

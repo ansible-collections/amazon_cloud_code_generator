@@ -184,6 +184,7 @@ class Schema(TypedDict):
     required: List
     primaryIdentifier: List
     readOnlyProperties: Optional[List]
+    createOnlyProperties: Optional[List]
 
 
 class AnsibleModule:
@@ -228,6 +229,7 @@ class AnsibleModule:
             params=_indent(generate_params(documentation["options"]), 4),
             primary_identifier=_camel_to_snake(self.schema.get("primaryIdentifier")[0].split('/')[-1].strip()),
             required_if=required_if,
+            create_only_properties = self.schema.get("createOnlyProperties")
         )
 
         self.write_module(target_dir, content)
@@ -255,7 +257,6 @@ def main():
         raw_content = cloudformation.generate_docs(type_name)
 
         json_content = json.loads(raw_content)
-        
         schema: Dict[str, Schema] = json_content
         module = AnsibleModule(schema=schema)
 

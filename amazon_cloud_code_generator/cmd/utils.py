@@ -4,10 +4,11 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 
+import copy
 import re
 import yaml
 import pkg_resources
-from typing import Dict
+from typing import Dict, List
 
 
 def python_type(value: str) -> str:
@@ -21,11 +22,12 @@ def python_type(value: str) -> str:
     return TYPE_MAPPING.get(value, value)
 
 
-def scrub_keys(a_dict: Dict, list_of_keys_to_remove) -> Dict:
-    """Filter a_dict by removing unwanted key: values listed in list_of_keys_to_remove"""   
-    if not isinstance(a_dict, dict):
-        return a_dict
-    return {k: v for k, v in ((k, scrub_keys(v, list_of_keys_to_remove)) for k, v in a_dict.items()) if k not in list_of_keys_to_remove}
+def scrub_keys(a_dict: Dict, list_of_keys_to_remove: List) -> Dict:
+    """Filter a_dict by removing unwanted key: values listed in list_of_keys_to_remove"""
+    a_dict_copy = copy.deepcopy(a_dict)
+    for key in list_of_keys_to_remove:
+        a_dict_copy.pop(key, None)
+    return a_dict_copy
 
 
 def _camel_to_snake(name: str, reversible: bool=False) -> str:

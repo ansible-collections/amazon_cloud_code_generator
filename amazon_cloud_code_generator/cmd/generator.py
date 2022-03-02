@@ -124,9 +124,13 @@ class Documentation:
         """Sanitize module's options and replace $ref with the correspoding parameters"""
         dict_copy = copy.copy(options)
         for key in dict_copy.keys():
+            if key in self.read_only_properties:
+                options.pop(key)
+                continue
+
             item = options[key]
 
-            if isinstance(item, list):            
+            if isinstance(item, list): 
                 if key == "enum":
                     options["choices"] = sorted(options.pop(key))
             elif isinstance(item, dict):
@@ -200,7 +204,17 @@ def generate_documentation(module, added_ins: Dict, next_version: str) -> Iterab
     module_name = module.name
     definitions = module.schema.get("definitions")
     options = module.schema.get("properties")
+    
+    # Properties defined as required must be specified in the desired state during resource creation
     required = module.schema.get("required")
+    
+    # Properties defined as readOnlyProperties can't be set by users
+    read_only_properties = module.schema.get("readOnlyProperties")
+    
+    # Properties defined as writeOnlyProperties can be specified by users when creating or updating a
+    # resource but can't be returned during a read or list requested
+    # write_only_properties = module.schema.get("readOnlyProperties")
+    
     documentation: Iterable = {
         "module": module_name,
         "author": "Ansible Cloud Team (@ansible-collections)",
@@ -215,6 +229,7 @@ def generate_documentation(module, added_ins: Dict, next_version: str) -> Iterab
     docs.options = options
     docs.definitions = definitions
     docs.required = required
+    docs.read_only_properties = [p.split('/')[-1].strip() for p in read_only_properties]
     documentation["options"] = docs.preprocess()
     documentation["options"].update(
         {

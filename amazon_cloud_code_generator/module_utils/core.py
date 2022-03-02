@@ -30,15 +30,13 @@ This module_utility adds shared support for AWS Cloud Control API modules.
 """
 
 from __future__ import absolute_import, division, print_function
-from cmath import log
-from typing import Dict
-
 __metaclass__ = type
 
 
 import botocore
 import json
 from itertools import count
+from typing import Iterable, List, Dict
 
 from ansible_collections.amazon.aws.plugins.module_utils.ec2 import AWSRetry
 from ansible_collections.amazon.cloud.plugins.module_utils.utils import (
@@ -46,6 +44,8 @@ from ansible_collections.amazon.cloud.plugins.module_utils.utils import (
     make_op,
     op,
     normalize_response,
+    scrub_keys,
+    camel_to_snake,
 )
 
 
@@ -65,7 +65,7 @@ class CloudControlResource(object):
         max_attempts = self.module.params.get("wait_timeout") // delay
         return {"Delay": delay, "MaxAttempts": max_attempts}
 
-    def list_resources(self, type_name):
+    def list_resources(self, type_name: str) -> List:
         """
         An exception occurred during task execution. To see the full traceback, use -vvv.
         The error was: botocore.exceptions.OperationNotPageableError: Operation cannot be paginated: list_resources
@@ -103,7 +103,7 @@ class CloudControlResource(object):
 
         return results
 
-    def list_resource_requests(self, params):
+    def list_resource_requests(self, params: Iterable) -> List:
         """
         Returns existing resource operation requests using specific filters.
         """
@@ -128,7 +128,7 @@ class CloudControlResource(object):
 
         return results
 
-    def get_resource(self, type_name, primary_identifier):
+    def get_resource(self, type_name: str, primary_identifier: str) -> List:
         # This is the "describe" equivalent for CCAPI
         response = {}
 
@@ -245,7 +245,7 @@ class CloudControlResource(object):
 
         return changed
 
-    def update_resource(self, type_name: str, identifier: str, params: Dict) -> bool:
+    def update_resource(self, type_name: str, identifier: str, params_to_set: Dict, create_only_params: List) -> bool:
         changed: bool = False
 
         try:
@@ -262,6 +262,12 @@ class CloudControlResource(object):
 
         properties = response.get("ResourceDescription", {}).get("Properties", {})
         properties = json.loads(properties)
+        
+        # Ignore createOnlyProperties that can be set only during resource creation
+        _create_only_params = [
+            p.split("/")[-1].strip() for p in create_only_params
+        ]
+        params = scrub_keys(params_to_set, _create_only_params)
 
         patch = JsonPatch()
         for k, v in params.items():
