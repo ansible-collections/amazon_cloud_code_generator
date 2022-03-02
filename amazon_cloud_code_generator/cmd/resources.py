@@ -7,12 +7,12 @@
 RESOURCES = [
     "AWS::S3::Bucket",
     "AWS::Logs::LogGroup",
-    "AWS::EC2::Instance",
+    "AWS::IAM::Role",
 ]
 
 
 MODULE_NAME_MAPPING = {
     "AWS::S3::Bucket": "s3_bucket",
     "AWS::Logs::LogGroup": "logs_log_group",
-    "AWS::EC2::Instance": "ec2_instance",
+    "AWS::IAM::Role": "iam_role",
 }

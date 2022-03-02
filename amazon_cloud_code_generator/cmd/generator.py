@@ -36,7 +36,7 @@ class Description:
     @classmethod
     def clean_up(cls, definitions: Iterable, my_string: str) -> str:
         values = set()
-        keys_to_keep = set(["JavaScript", "EventBridge", "CloudFormation", "CloudWatch", "ACLs", "XMLHttpRequest", "DDThh"])
+        keys_to_keep = set(["JavaScript", "EventBridge", "CloudFormation", "CloudWatch", "ACLs", "XMLHttpRequest", "DDThh", "ARNs"])
         values_to_keep = set(["PUT", "S3"])
         
         def get_values(a_dict):

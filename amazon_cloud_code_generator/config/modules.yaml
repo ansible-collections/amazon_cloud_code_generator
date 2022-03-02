@@ -7,7 +7,7 @@
     documentation:
       short_description: Create and manage log groups
       description: Create and manage log groups (list, create, update, describe, delete).
-- ec2_instance:
+- iam_role:
     documentation:
       short_description: Create and manage EC2 instances
       description: Manage EC2 instances (list, create, update, describe, delete).
