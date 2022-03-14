@@ -9,7 +9,8 @@ import re
 from typing import Iterable, List, Dict
 
 from .utils import (
-    python_type, scrub_keys,
+    python_type,
+    scrub_keys,
     camel_to_snake,
     get_module_from_config,
     _camel_to_snake
@@ -18,7 +19,7 @@ from .utils import (
 
 class Description:
     @classmethod
-    def normalize(cls, definitions: Iterable, string: str) -> List[str]:
+    def normalize(cls, string: str, definitions: Iterable = {}) -> List[str]:
         with_no_line_break: List[str] = []
         sentences = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', string)
 
@@ -146,10 +147,10 @@ class Documentation:
                         if item.get("description") and result.get("description"):
                             if isinstance(item["description"], list):
                                item["description"].extend(result.pop("description"))
-                               item["description"] = list(Description.normalize(self.definitions, item["description"]))
+                               item["description"] = list(Description.normalize(item["description"], self.definitions))
                             else:
                                item["description"] += result.pop("description")
-                               item["description"] = list(Description.normalize(self.definitions, item["description"]))
+                               item["description"] = list(Description.normalize(item["description"], self.definitions))
 
                         item.update(result)
                         options[key] = item
@@ -161,7 +162,7 @@ class Documentation:
                 if key == "type":
                     options[key] = python_type(options[key])
                 if key == "description":
-                    options[key] = list(Description.normalize(self.definitions, options[key]))
+                    options[key] = list(Description.normalize(options[key], self.definitions))
                 if key == "const":
                     options["default"] = options.pop(key)
     
@@ -198,7 +199,7 @@ class Documentation:
         
         return camel_to_snake(scrub_keys(self.options, list_of_keys_to_remove))
 
-def generate_documentation(module, added_ins: Dict, next_version: str) -> Iterable:
+def generate_documentation(module: object, added_ins: Dict, next_version: str) -> Iterable:
     """Format and generate the AnsibleModule documentation"""
 
     module_name = module.name
@@ -284,5 +285,4 @@ class CloudFormationWrapper:
         """
         # TODO: include version
         response = self.client.describe_type(Type='RESOURCE', TypeName=type_name)
-
         return response.get('Schema')

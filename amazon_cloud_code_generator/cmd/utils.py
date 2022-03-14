@@ -22,12 +22,19 @@ def python_type(value: str) -> str:
     return TYPE_MAPPING.get(value, value)
 
 
+# def scrub_keys(a_dict: Dict, list_of_keys_to_remove: List) -> Dict:
+#     """Filter a_dict by removing unwanted key: values listed in list_of_keys_to_remove"""
+#     a_dict_copy = copy.deepcopy(a_dict)
+#     for key in list_of_keys_to_remove:
+#         a_dict_copy.pop(key, None)
+    
+#     return a_dict_copy
+
+
 def scrub_keys(a_dict: Dict, list_of_keys_to_remove: List) -> Dict:
-    """Filter a_dict by removing unwanted key: values listed in list_of_keys_to_remove"""
-    a_dict_copy = copy.deepcopy(a_dict)
-    for key in list_of_keys_to_remove:
-        a_dict_copy.pop(key, None)
-    return a_dict_copy
+    if not isinstance(a_dict, dict):
+        return a_dict
+    return {k: v for k, v in ((k, scrub_keys(v, list_of_keys_to_remove)) for k, v in a_dict.items()) if k not in list_of_keys_to_remove}
 
 
 def _camel_to_snake(name: str, reversible: bool=False) -> str:

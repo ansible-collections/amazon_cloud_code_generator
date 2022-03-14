@@ -151,9 +151,19 @@ def test__format_documentation():
 
 
 def test__generate_argument_spec():
+    expected_argument_spec = """
+argument_spec['log_group_name'] = {'type': 'str'}
+argument_spec['kms_key_id'] = {'type': 'str'}
+argument_spec['retention_in_days'] = {'type': 'int', 'choices': [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]}
+argument_spec['tags'] = {'type': 'list', 'elements': 'dict', 'suboptions': {'key': {'type': 'str', 'required': True}, 'value': {'type': 'str', 'required': True}}}
+argument_spec['state'] = {'type': 'str', 'choices': ['create', 'update', 'delete', 'list', 'describe', 'get'], 'default': 'create'}
+argument_spec['wait'] = {'type': 'bool', 'default': False}
+argument_spec['wait_timeout'] = {'type': 'int', 'default': 320}
+    
+    """
     module = rm.AnsibleModule(schema=schema)
-    documentation = generate_documentation(module, "", "")
-    assert rm.generate_argument_spec(documentation["options"]) == expected
+    documentation = g.generate_documentation(module, "", "")
+    assert rm.generate_argument_spec(documentation["options"]) == expected_argument_spec
 
 
 def test_AnsibleModule():

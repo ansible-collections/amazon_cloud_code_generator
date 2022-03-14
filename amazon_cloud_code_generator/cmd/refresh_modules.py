@@ -107,9 +107,10 @@ def _indent(text_block: str, indent: int=0) -> str:
 
 def generate_params(definitions: Iterable) -> str:
     params: str = ""
-    for key in definitions.keys() - ["wait", "wait_timeout", "state"]:
+    keys = sorted(definitions.keys() - ["wait", "wait_timeout", "state"])
+    for key in keys:
         params += f"\nparams['{key}'] = module.params.get('{key}')"
-    
+
     return params
 
 
