@@ -1,11 +1,40 @@
 import re
 import json
+import functools
 from typing import Iterable, List, Dict
 
 from ansible.module_utils.common.dict_transformations import (
     camel_dict_to_snake_dict,
     snake_dict_to_camel_dict
 )
+
+
+def to_async(fn):
+    '''Turn a sync function into an async function using threads'''
+    from concurrent.futures import ThreadPoolExecutor
+    import asyncio
+    pool = ThreadPoolExecutor()
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        future = pool.submit(fn, *args, **kwargs)
+        return asyncio.wrap_future(future)  # make it awaitable
+
+    return wrapper
+
+
+def to_sync(fn):
+    '''Turn an async function into a sync function'''
+    import asyncio
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        res = fn(*args, **kwargs)
+        if asyncio.iscoroutine(res):
+            return asyncio.get_event_loop().run_until_complete(res)
+        return res
+
+    return wrapper
 
 
 def _jsonify(data: Dict) -> Dict:

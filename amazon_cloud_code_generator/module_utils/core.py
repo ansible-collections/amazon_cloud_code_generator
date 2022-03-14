@@ -45,7 +45,8 @@ from ansible_collections.amazon.cloud.plugins.module_utils.utils import (
     op,
     normalize_response,
     scrub_keys,
-    camel_to_snake,
+    to_sync,
+    to_async
 )
 
 
@@ -65,14 +66,16 @@ class CloudControlResource(object):
         max_attempts = self.module.params.get("wait_timeout") // delay
         return {"Delay": delay, "MaxAttempts": max_attempts}
 
-    def list_resources(self, type_name: str) -> List:
+    @to_sync
+    async def list_resources(self, type_name: str) -> List:
         """
         An exception occurred during task execution. To see the full traceback, use -vvv.
         The error was: botocore.exceptions.OperationNotPageableError: Operation cannot be paginated: list_resources
         Fall to manual pagination
         """
-        results = []
-        response = {}
+        resource_list: List = []
+        results: List = []
+        response: Dict = {}
 
         for i in count():
             # https://docs.aws.amazon.com/cloudcontrolapi/latest/APIReference/API_ListResources.html
@@ -90,16 +93,23 @@ class CloudControlResource(object):
                     botocore.exceptions.ClientError,
                 ) as e:
                     self.module.fail_json_aws(e, msg="Failed to list resources")
-                results.append(normalize_response(response))
+                # results.extend(normalize_response(response))
+                resource_list.append(response)
             else:
                 break
 
-        # TODO: append properties for each resource
-        # for each in results:
-        #     resource_descriptions = each.get("ResourceDescriptions", [])
-        #     for r in resource_descriptions:
-        #         identifier = r.get("Identifier")
-        #         properties = self.get_resource(type_name, identifier)
+        for each in resource_list:
+            resource_descriptions = each.get("ResourceDescriptions", [])
+            
+            # for r in resource_descriptions:
+            #    identifier = r.get("Identifier")
+            #    results.append(self.get_resource(type_name, identifier))
+
+            # Fall to use asyncio to speed up the process 
+            import asyncio
+
+            futures = [self.get_resources_async(type_name, r.get("Identifier")) for r in resource_descriptions]
+            results = await asyncio.gather(*futures)
 
         return results
 
@@ -127,6 +137,10 @@ class CloudControlResource(object):
                 break
 
         return results
+    
+    @to_async
+    def get_resources_async(self, type_name, identifier):
+        return self.get_resource(type_name, identifier)
 
     def get_resource(self, type_name: str, primary_identifier: str) -> List:
         # This is the "describe" equivalent for CCAPI
