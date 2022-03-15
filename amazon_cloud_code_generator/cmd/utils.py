@@ -11,7 +11,7 @@ import pkg_resources
 from typing import Dict, List
 
 
-def python_type(value: str) -> str:
+def python_type(value) -> str:
     TYPE_MAPPING = {
         "array": "list",
         "boolean": "bool",
@@ -19,6 +19,8 @@ def python_type(value: str) -> str:
         "object": "dict",
         "string": "str",
     }
+    if isinstance(value, list):
+        return TYPE_MAPPING.get(value[0], value)
     return TYPE_MAPPING.get(value, value)
 
 

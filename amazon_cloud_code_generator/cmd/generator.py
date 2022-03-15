@@ -22,10 +22,13 @@ class Description:
     def normalize(cls, string: str, definitions: Iterable = {}) -> List[str]:
         with_no_line_break: List[str] = []
         sentences = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', string)
+        sentences[:] = [x for x in sentences if x]
 
         for l in sentences:
             if "\n" in l:
-                with_no_line_break += l.split("\n")
+                splitted = l.split("\n")
+                splitted[:] = [x for x in splitted if x]
+                with_no_line_break += splitted
             else:
                 with_no_line_break.append(l)
 
@@ -37,7 +40,7 @@ class Description:
     @classmethod
     def clean_up(cls, definitions: Iterable, my_string: str) -> str:
         values = set()
-        keys_to_keep = set(["JavaScript", "EventBridge", "CloudFormation", "CloudWatch", "ACLs", "XMLHttpRequest", "DDThh", "ARNs"])
+        keys_to_keep = set(["JavaScript", "EventBridge", "CloudFormation", "CloudWatch", "ACLs", "XMLHttpRequest", "DDThh", "ARNs", "VPCs"])
         values_to_keep = set(["PUT", "S3"])
         
         def get_values(a_dict):
@@ -125,7 +128,7 @@ class Documentation:
         """Sanitize module's options and replace $ref with the correspoding parameters"""
         dict_copy = copy.copy(options)
         for key in dict_copy.keys():
-            if key in self.read_only_properties:
+            if key in self.read_only_properties and key not in self.primary_identifier:
                 options.pop(key)
                 continue
 
@@ -134,6 +137,8 @@ class Documentation:
             if isinstance(item, list): 
                 if key == "enum":
                     options["choices"] = sorted(options.pop(key))
+                if key == "type":
+                    options[key] = python_type(options[key])
             elif isinstance(item, dict):
                 if key == "properties":
                     options["suboptions"] = options.pop(key)
@@ -215,6 +220,8 @@ def generate_documentation(module: object, added_ins: Dict, next_version: str) -
     # Properties defined as writeOnlyProperties can be specified by users when creating or updating a
     # resource but can't be returned during a read or list requested
     # write_only_properties = module.schema.get("readOnlyProperties")
+
+    primary_identifier = module.schema.get("primaryIdentifier")
     
     documentation: Iterable = {
         "module": module_name,
@@ -231,6 +238,7 @@ def generate_documentation(module: object, added_ins: Dict, next_version: str) -
     docs.definitions = definitions
     docs.required = required
     docs.read_only_properties = [p.split('/')[-1].strip() for p in read_only_properties]
+    docs.primary_identifier = [p.split('/')[-1].strip() for p in primary_identifier]
     documentation["options"] = docs.preprocess()
     documentation["options"].update(
         {
@@ -285,4 +293,5 @@ class CloudFormationWrapper:
         """
         # TODO: include version
         response = self.client.describe_type(Type='RESOURCE', TypeName=type_name)
+
         return response.get('Schema')
