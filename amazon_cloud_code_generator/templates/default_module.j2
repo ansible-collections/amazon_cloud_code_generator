@@ -39,7 +39,7 @@ def main():
     if state == "list":
         results["result"] = cloud.list_resources(type_name)
     
-    if state == ("describe", "get"):
+    if state in ("describe", "get"):
         results["result"] = cloud.get_resource(type_name, identifier)
 
     if state == "create":
