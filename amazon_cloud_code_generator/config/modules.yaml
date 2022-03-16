@@ -27,3 +27,4 @@
     documentation:
       short_description: Create and manage AWS VPC Internet gateways
       description: Create and manage AWS VPC Internet gateways (list, create, update, describe, delete).
+- ec2_subnet_route_table_association:

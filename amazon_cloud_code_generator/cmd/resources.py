@@ -12,6 +12,7 @@ RESOURCES = [
     "AWS::EC2::VPC",
     "AWS::EC2::Subnet",
     "AWS::EC2::InternetGateway",
+    "AWS::EC2::SubnetRouteTableAssociation",
 ]
 
 
@@ -23,4 +24,5 @@ MODULE_NAME_MAPPING = {
     "AWS::EC2::VPC": "ec2_vpc",
     "AWS::EC2::Subnet": "ec2_subnet",
     "AWS::EC2::InternetGateway": "ec2_internet_gateway",
+    "AWS::EC2::SubnetRouteTableAssociation": "ec2_subnet_route_table_association",
 }
