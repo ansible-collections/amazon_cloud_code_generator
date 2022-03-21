@@ -8,7 +8,7 @@ import copy
 import re
 from typing import Iterable, List, Dict
 
-from .utils import (
+from utils import (
     python_type,
     scrub_keys,
     camel_to_snake,
@@ -24,25 +24,27 @@ class Description:
         sentences = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', string)
         sentences[:] = [x for x in sentences if x]
 
-        for l in sentences:
-            if "\n" in l:
-                splitted = l.split("\n")
+        for line in sentences:
+            if "\n" in line:
+                splitted = line.split("\n")
                 splitted[:] = [x for x in splitted if x]
                 with_no_line_break += splitted
             else:
-                with_no_line_break.append(l)
+                with_no_line_break.append(line)
 
         with_no_line_break = [cls.clean_up(definitions, i) for i in with_no_line_break]
-        
+
         return with_no_line_break
-    
 
     @classmethod
     def clean_up(cls, definitions: Iterable, my_string: str) -> str:
         values = set()
-        keys_to_keep = set(["JavaScript", "EventBridge", "CloudFormation", "CloudWatch", "ACLs", "XMLHttpRequest", "DDThh", "ARNs", "VPCs"])
-        values_to_keep = set(["PUT", "S3"])
-        
+        ignored_keys = set([
+            "JavaScript", "EventBridge", "CloudFormation", "CloudWatch", "ACLs",
+            "XMLHttpRequest", "DDThh", "ARNs", "VPCs"
+        ])
+        ignored_values = set(["PUT", "S3"])
+
         def get_values(a_dict):
             for key, value in a_dict.items():
                 if isinstance(value, dict):
@@ -50,28 +52,28 @@ class Description:
                 else:
                     if key in ("choices", "enum"):
                         yield value
-        
+
         for value in get_values(definitions):
             values |= set(value)
-            
+
         def rewrite_name(matchobj):
             """Rewrite option name to I(camel_to_snake(option))"""
             name = matchobj.group(0)
-            if name not in keys_to_keep:
+            if name not in ignored_keys:
                 snake_name = _camel_to_snake(name)
                 output = f"I({snake_name})"
                 return output
             return name
-        
+
         def rewrite_value(matchobj):
             """Find link and replace it with U(link)"""
             name = matchobj.group(0)
             if name.isalpha():
-                if name in values and name not in values_to_keep:
+                if name in values and name not in ignored_values:
                     output = f"C({name})"
                     return output
             else:
-                if name not in values_to_keep:
+                if name not in ignored_values:
                     output = f"C({name})"
                     return output
             return name
@@ -81,7 +83,7 @@ class Description:
             name = matchobj.group(0)
             output = f"U({name})"
             return output
-        
+
         def find_match(pattern, my_string):
             """Find matching string using a pattern and rewrite it as needed."""
             matches = re.findall(pattern, my_string)
@@ -99,7 +101,7 @@ class Description:
             lword = re.sub(r"([A-Z]+[A-Za-z]+)+([A-Z][a-z]+)+", rewrite_name, line)
             lword = re.sub(r'[A-Z_]+[0-9A-Z]+', rewrite_value, lword)
             return lword
-        
+
         my_string = format_string(my_string)
 
         # Find link and replace it with U(link)
@@ -107,13 +109,13 @@ class Description:
 
         # Cleanup phrase removing square brackets contained words
         my_string = re.sub(r"[\[].*?[\]]", "", my_string)
-            
+
         my_string = find_match("values are:", my_string)
         my_string = find_match("following properties:", my_string)
 
         # Substitute one or more white space which is at beginning and end of the string with an empty string
         my_string = re.sub(r"^\s+|\s+$", "", my_string)
-        
+
         my_string = re.sub(r"TRUE", "C(True)", my_string)
 
         # Cleanup some quotes
@@ -123,7 +125,7 @@ class Description:
         return my_string
 
 
-class Documentation:    
+class Documentation:
     def replace_keys(self, options: Iterable, definitions: Iterable):
         """Sanitize module's options and replace $ref with the correspoding parameters"""
         dict_copy = copy.copy(options)
@@ -134,7 +136,7 @@ class Documentation:
 
             item = options[key]
 
-            if isinstance(item, list): 
+            if isinstance(item, list):
                 if key == "enum":
                     options["choices"] = sorted(options.pop(key))
                 if key == "type":
@@ -143,41 +145,38 @@ class Documentation:
                 if key == "properties":
                     options["suboptions"] = options.pop(key)
                     key = "suboptions"
-                
-                if  "$ref" in item:
+
+                if "$ref" in item:
                     lookup_param = item['$ref'].split('/')[-1].strip()
                     if definitions.get(lookup_param):
                         result = definitions[lookup_param]
                         item.pop("$ref")
                         if item.get("description") and result.get("description"):
                             if isinstance(item["description"], list):
-                               item["description"].extend(result.pop("description"))
-                               item["description"] = list(Description.normalize(item["description"], self.definitions))
+                                item["description"].extend(result.pop("description"))
+                                item["description"] = list(Description.normalize(item["description"], self.definitions))
                             else:
-                               item["description"] += result.pop("description")
-                               item["description"] = list(Description.normalize(item["description"], self.definitions))
+                                item["description"] += result.pop("description")
+                                item["description"] = list(Description.normalize(item["description"], self.definitions))
 
                         item.update(result)
                         options[key] = item
-                
-                
                 self.replace_keys(options[key], definitions)
-            
-            elif isinstance(item, str): 
+            elif isinstance(item, str):
                 if key == "type":
                     options[key] = python_type(options[key])
                 if key == "description":
                     options[key] = list(Description.normalize(options[key], self.definitions))
                 if key == "const":
                     options["default"] = options.pop(key)
-    
+
     def ensure_required(self, a_dict: Iterable):
         """Add required=True for specific parameters"""
         a_dict_copy = copy.copy(a_dict)
 
         if not isinstance(a_dict, dict):
             return a_dict
-        
+
         for k, v in a_dict_copy.items():
             if isinstance(v, dict):
                 if "items" in a_dict[k]:
@@ -190,19 +189,23 @@ class Documentation:
                     for r in v["required"]:
                         a_dict[k]["suboptions"][r]["required"] = True
                     a_dict[k].pop("required")
-                
+
             self.ensure_required(a_dict[k])
-                        
+
     def preprocess(self) -> Iterable:
-        list_of_keys_to_remove = ["additionalProperties", "insertionOrder", "uniqueItems", "pattern", "examples", "maxLength", "minLength", "format"]
+        list_of_keys_to_remove = [
+            "additionalProperties", "insertionOrder", "uniqueItems", "pattern", "examples",
+            "maxLength", "minLength", "format"
+        ]
         self.replace_keys(self.options, self.definitions)
         self.ensure_required(self.options)
-        
+
         if self.required:
             for r in self.required:
                 self.options[r]["required"] = True
-        
+
         return camel_to_snake(scrub_keys(self.options, list_of_keys_to_remove))
+
 
 def generate_documentation(module: object, added_ins: Dict, next_version: str) -> Iterable:
     """Format and generate the AnsibleModule documentation"""
@@ -210,19 +213,19 @@ def generate_documentation(module: object, added_ins: Dict, next_version: str) -
     module_name = module.name
     definitions = module.schema.get("definitions")
     options = module.schema.get("properties")
-    
+
     # Properties defined as required must be specified in the desired state during resource creation
     required = module.schema.get("required")
-    
+
     # Properties defined as readOnlyProperties can't be set by users
     read_only_properties = module.schema.get("readOnlyProperties")
-    
+
     # Properties defined as writeOnlyProperties can be specified by users when creating or updating a
     # resource but can't be returned during a read or list requested
     # write_only_properties = module.schema.get("readOnlyProperties")
 
     primary_identifier = module.schema.get("primaryIdentifier")
-    
+
     documentation: Iterable = {
         "module": module_name,
         "author": "Ansible Cloud Team (@ansible-collections)",
@@ -283,7 +286,7 @@ class CloudFormationWrapper:
         :param client: A Boto3 CloudFormation client
         """
         self.client = client
-    
+
     def generate_docs(self, type_name: str):
         """
         Equivalent to
