@@ -136,7 +136,10 @@ class Documentation:
         """Sanitize module's options and replace $ref with the correspoding parameters"""
         dict_copy = copy.copy(options)
         for key in dict_copy.keys():
-            if key in self.read_only_properties and key not in self.primary_identifier:
+            if (
+                camel_to_snake(key) in self.read_only_properties
+                and camel_to_snake(key) not in self.primary_identifier
+            ):
                 options.pop(key)
                 continue
 
@@ -260,7 +263,7 @@ def generate_documentation(
     # Properties defined as readOnlyProperties can't be set by users
     docs.read_only_properties = module.schema.get("readOnlyProperties")
 
-    docs.primary_identifier = module.schema.get("primary_identifier")
+    docs.primary_identifier = module.schema.get("primaryIdentifier")
 
     # Properties defined as writeOnlyProperties can be specified by users when creating or updating a
     # resource but can't be returned during a read or list requested
