@@ -89,18 +89,17 @@ options:
         type: int
     state:
         choices:
-        - create
-        - update
-        - delete
+        - present
+        - absent
         - list
         - describe
         - get
-        default: create
+        default: present
         description:
         - Goal state for resouirce.
-        - I(state=create) creates the resouce.
-        - I(state=update) updates the existing resouce.
-        - I(state=delete) ensures an existing instance is deleted.
+        - I(state=present) creates the resource if it doesn't exist, or updates to
+            the provided state if the resource already exists.
+        - I(state=absent) ensures an existing instance is deleted.
         - I(state=list) get all the existing resources.
         - I(state=describe) or I(state=get) retrieves information on an existing resource.
         type: str
@@ -144,7 +143,7 @@ argument_spec['log_group_name'] = {'type': 'str'}
 argument_spec['kms_key_id'] = {'type': 'str'}
 argument_spec['retention_in_days'] = {'type': 'int', 'choices': [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]}
 argument_spec['tags'] = {'type': 'dict', 'required': False, 'aliases': ['resource_tags']}
-argument_spec['state'] = {'type': 'str', 'choices': ['create', 'update', 'delete', 'list', 'describe', 'get'], 'default': 'create'}
+argument_spec['state'] = {'type': 'str', 'choices': ['present', 'absent', 'list', 'describe', 'get'], 'default': 'present'}
 argument_spec['wait'] = {'type': 'bool', 'default': False}
 argument_spec['wait_timeout'] = {'type': 'int', 'default': 320}
 argument_spec['purge_tags'] = {'type': 'bool', 'required': False, 'default': True}"""
