@@ -33,12 +33,12 @@ except ImportError:
     # Python 3.8
     from typing import TypedDict
 
-from generator import CloudFormationWrapper
-from generator import generate_documentation
-from resources import RESOURCES
-from utils import get_module_from_config
-from utils import camel_to_snake
-from utils import scrub_keys
+from .resources import RESOURCES
+from .generator import CloudFormationWrapper
+from .generator import generate_documentation
+from .utils import get_module_from_config
+from .utils import camel_to_snake
+from .utils import scrub_keys
 
 
 def run_git(git_dir: str, *args):
@@ -123,17 +123,19 @@ def generate_params(definitions: Iterable) -> str:
 
 def gen_required_if(schema: Dict) -> List:
     primary_idenfifier = schema.get("primaryIdentifier")
-    read_only_properties = schema.get("readOnlyParameters")
-    required = schema.get("required")
+    read_only_properties = schema.get("readOnlyProperties")
+    required = schema.get("required", [])
     states = ["update", "delete", "get"]
     entries: List = []
 
+    # Require primaryIdentifier only if not marked as a readOnlyProperty and further required properties
+    # when state == create
     if primary_idenfifier:
         for pr in primary_idenfifier:
-            if read_only_properties and pr not in read_only_properties:
-                if required:
-                    entries.append(["state", "create", [pr, *required], True])
-        [entries.append(["state", state, [pr], True]) for state in states]
+            if pr not in read_only_properties:
+                entries.append(["state", "create", [pr, *required], True])
+
+            [entries.append(["state", state, [pr], True]) for state in states]
 
     return entries
 
@@ -208,6 +210,7 @@ def generate_schema(raw_content) -> Dict:
     for key, value in schema.items():
         if isinstance(value, list):
             schema[key] = [camel_to_snake(p.split("/")[-1].strip()) for p in value]
+
     return schema
 
 
@@ -315,7 +318,7 @@ def main():
         per_version_ignore_content = ignore_content
         for f in files:
             for test in skip_list:
-                # Sanity test 'validate-modules' does not test path 'plugins/module_utils/vmware_rest.py'
+                # Sanity test 'validate-modules' does not test path 'plugins/module_utils/core.py'
                 if version in ["2.9", "2.10", "2.11"]:
                     if f == "plugins/module_utils/core.py":
                         if test.startswith("validate-modules:"):
