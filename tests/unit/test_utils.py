@@ -32,7 +32,7 @@ options = {
     }
 }
 
-  
+
 def test__scrub_keys():
     list_of_keys_to_remove = ["additionalProperties", "insertionOrder", "uniqueItems", "pattern", "maxLength", "minLength", "format"]
     options_scrubbed = {
@@ -46,9 +46,9 @@ def test__scrub_keys():
         'TransitionDate': {
             'description': [
                 'The date value in ISO 8601 format.',
-                'The timezone is always UTC. (YYYY-MM-DDThh:mm:ssZ)'
+                'The timezone is always UTC. (YYYY-MM-DDThh:mm:ssZ)',
             ],
             'type': 'str',
         }
     }
-    assert ut.scrub_keys(options,list_of_keys_to_remove) == options_scrubbed
+    assert ut.scrub_keys(options, list_of_keys_to_remove) == options_scrubbed

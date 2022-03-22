@@ -20,7 +20,7 @@ expected_content = resources("fixtures/expected_content.json")
 
 def test__gen_required_if():
     expected_required_if = [
-        ['state', 'update', ['log_group_name'], True],['state', 'delete', ['log_group_name'], True],['state', 'get', ['log_group_name'], True]
+        ['state', 'update', ['log_group_name'], True], ['state', 'delete', ['log_group_name'], True], ['state', 'get', ['log_group_name'], True]
     ]
     schema: Dict[str, rm.Schema] = raw_content
     assert rm.gen_required_if(schema["primaryIdentifier"], schema.get("required")) == expected_required_if
