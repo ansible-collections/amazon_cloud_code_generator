@@ -30,11 +30,12 @@ This module_utility adds shared support for AWS Cloud Control API modules.
 """
 
 from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
 
-import botocore
 import json
+import traceback
 from itertools import count
 from typing import Iterable, List, Dict
 
@@ -46,8 +47,17 @@ from ansible_collections.amazon.cloud.plugins.module_utils.utils import (
     normalize_response,
     scrub_keys,
     to_sync,
-    to_async
+    to_async,
 )
+
+BOTO3_IMP_ERR = None
+try:
+    import botocore
+
+    HAS_BOTO3 = True
+except ImportError:
+    BOTO3_IMP_ERR = traceback.format_exc()
+    HAS_BOTO3 = False
 
 
 class CloudControlResource(object):
@@ -100,15 +110,18 @@ class CloudControlResource(object):
 
         for each in resource_list:
             resource_descriptions = each.get("ResourceDescriptions", [])
-            
+
             # for r in resource_descriptions:
             #    identifier = r.get("Identifier")
             #    results.append(self.get_resource(type_name, identifier))
 
-            # Fall to use asyncio to speed up the process 
+            # Fall to use asyncio to speed up the process
             import asyncio
 
-            futures = [self.get_resources_async(type_name, r.get("Identifier")) for r in resource_descriptions]
+            futures = [
+                self.get_resources_async(type_name, r.get("Identifier"))
+                for r in resource_descriptions
+            ]
             results = await asyncio.gather(*futures)
 
         return results
@@ -137,7 +150,7 @@ class CloudControlResource(object):
                 break
 
         return results
-    
+
     @to_async
     def get_resources_async(self, type_name, identifier):
         return self.get_resource(type_name, identifier)
@@ -197,7 +210,7 @@ class CloudControlResource(object):
         params = {
             "ResourceRequestStatusFilter": {
                 "Operations": ["CREATE", "DELETE", "UPDATE"],
-                "OperationStatuses": ["IN_PROGRESS",],
+                "OperationStatuses": ["IN_PROGRESS"],
             }
         }
 
@@ -259,7 +272,13 @@ class CloudControlResource(object):
 
         return changed
 
-    def update_resource(self, type_name: str, identifier: str, params_to_set: Dict, create_only_params: List) -> bool:
+    def update_resource(
+        self,
+        type_name: str,
+        identifier: str,
+        params_to_set: Dict,
+        create_only_params: List,
+    ) -> bool:
         changed: bool = False
 
         try:
@@ -276,11 +295,9 @@ class CloudControlResource(object):
 
         properties = response.get("ResourceDescription", {}).get("Properties", {})
         properties = json.loads(properties)
-        
+
         # Ignore createOnlyProperties that can be set only during resource creation
-        _create_only_params = [
-            p.split("/")[-1].strip() for p in create_only_params
-        ]
+        _create_only_params = [p.split("/")[-1].strip() for p in create_only_params]
         params = scrub_keys(params_to_set, _create_only_params)
 
         patch = JsonPatch()
