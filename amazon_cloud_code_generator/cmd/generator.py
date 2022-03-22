@@ -13,7 +13,6 @@ from utils import (
     scrub_keys,
     camel_to_snake,
     get_module_from_config,
-    _camel_to_snake
 )
 
 
@@ -60,7 +59,7 @@ class Description:
             """Rewrite option name to I(camel_to_snake(option))"""
             name = matchobj.group(0)
             if name not in ignored_keys:
-                snake_name = _camel_to_snake(name)
+                snake_name = camel_to_snake(name)
                 output = f"I({snake_name})"
                 return output
             return name
@@ -194,38 +193,24 @@ class Documentation:
 
     def preprocess(self) -> Iterable:
         list_of_keys_to_remove = [
-            "additionalProperties", "insertionOrder", "uniqueItems", "pattern", "examples",
-            "maxLength", "minLength", "format"
+            "additionalProperties", "insertionOrder", "uniqueItems",
+            "pattern", "examples", "maxLength", "minLength", "format"
         ]
         self.replace_keys(self.options, self.definitions)
         self.ensure_required(self.options)
+        sanitized_options: Iterable = camel_to_snake(scrub_keys(self.options, list_of_keys_to_remove))
 
-        if self.required:
+        if self.required and all(self.required):
             for r in self.required:
-                self.options[r]["required"] = True
+                sanitized_options[r]["required"] = True
 
-        return camel_to_snake(scrub_keys(self.options, list_of_keys_to_remove))
+        return sanitized_options
 
 
 def generate_documentation(module: object, added_ins: Dict, next_version: str) -> Iterable:
     """Format and generate the AnsibleModule documentation"""
 
     module_name = module.name
-    definitions = module.schema.get("definitions")
-    options = module.schema.get("properties")
-
-    # Properties defined as required must be specified in the desired state during resource creation
-    required = module.schema.get("required")
-
-    # Properties defined as readOnlyProperties can't be set by users
-    read_only_properties = module.schema.get("readOnlyProperties")
-
-    # Properties defined as writeOnlyProperties can be specified by users when creating or updating a
-    # resource but can't be returned during a read or list requested
-    # write_only_properties = module.schema.get("readOnlyProperties")
-
-    primary_identifier = module.schema.get("primaryIdentifier")
-
     documentation: Iterable = {
         "module": module_name,
         "author": "Ansible Cloud Team (@ansible-collections)",
@@ -237,11 +222,21 @@ def generate_documentation(module: object, added_ins: Dict, next_version: str) -
     }
 
     docs = Documentation()
-    docs.options = options
-    docs.definitions = definitions
-    docs.required = required
-    docs.read_only_properties = [p.split('/')[-1].strip() for p in read_only_properties]
-    docs.primary_identifier = [p.split('/')[-1].strip() for p in primary_identifier]
+    docs.options = module.schema.get("properties")
+    docs.definitions = module.schema.get("definitions")
+
+    # Properties defined as required must be specified in the desired state during resource creation
+    docs.required = module.schema.get("required")
+
+    # Properties defined as readOnlyProperties can't be set by users
+    docs.read_only_properties = module.schema.get("readOnlyProperties")
+
+    docs.primary_identifier = module.schema.get("primary_identifier")
+
+    # Properties defined as writeOnlyProperties can be specified by users when creating or updating a
+    # resource but can't be returned during a read or list requested
+    # write_only_properties = module.schema.get("readOnlyProperties")
+
     documentation["options"] = docs.preprocess()
     documentation["options"].update(
         {

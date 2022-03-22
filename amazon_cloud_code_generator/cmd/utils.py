@@ -4,7 +4,6 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 
-import copy
 import re
 import yaml
 import pkg_resources
@@ -29,7 +28,7 @@ def python_type(value) -> str:
 #     a_dict_copy = copy.deepcopy(a_dict)
 #     for key in list_of_keys_to_remove:
 #         a_dict_copy.pop(key, None)
-    
+#
 #     return a_dict_copy
 
 
@@ -65,14 +64,19 @@ def _camel_to_snake(name: str, reversible: bool=False) -> str:
     return re.sub(all_cap_pattern, r'\1_\2', s2).lower()
 
 
-def camel_to_snake(a_dict: Dict) -> Dict:
-    b_dict = {}
-    for k in a_dict.keys():
-        if isinstance(a_dict[k], dict):
-            b_dict[_camel_to_snake(k)] = camel_to_snake(a_dict[k])
-        else:
-            b_dict[_camel_to_snake(k)] = a_dict[k]
-    return b_dict
+def camel_to_snake(data):
+    if isinstance(data, str):
+        return _camel_to_snake(data)
+    elif isinstance(data, list):
+        return [_camel_to_snake(r) for r in data]
+    elif isinstance(data, dict):
+        b_dict = {}
+        for k in data.keys():
+            if isinstance(data[k], dict):
+                b_dict[_camel_to_snake(k)] = camel_to_snake(data[k])
+            else:
+                b_dict[_camel_to_snake(k)] = data[k]
+        return b_dict
 
 
 def get_module_from_config(module: str):
@@ -83,4 +87,3 @@ def get_module_from_config(module: str):
         if module in i:
             return i[module]
     return False
-

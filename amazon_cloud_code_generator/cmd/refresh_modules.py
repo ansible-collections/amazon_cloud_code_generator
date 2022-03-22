@@ -5,7 +5,6 @@ import argparse
 from functools import lru_cache
 import pathlib
 import subprocess
-from typing import Dict, Iterable, List, Optional, TypedDict
 import pkg_resources
 from pbr.version import VersionInfo
 import baron
@@ -13,21 +12,31 @@ import redbaron
 import yaml
 import jinja2
 import json
-import boto3
+import traceback
 
-from .generator import (
-    CloudFormationWrapper,
-    generate_documentation
-)
-from .resources import (
-    RESOURCES,
-    MODULE_NAME_MAPPING
-)
-from .utils import (
-    get_module_from_config,
-    _camel_to_snake,
-    scrub_keys
-)
+BOTO3_IMP_ERR = None
+try:
+    import boto3
+    HAS_BOTO3 = True
+except ImportError:
+    BOTO3_IMP_ERR = traceback.format_exc()
+    HAS_BOTO3 = False
+
+from typing import Dict, Iterable, List, Optional
+try:
+    # Python < 3.8
+    # pip install mypy_extensions
+    from mypy_extensions import TypedDict
+except ImportError:
+    # Python 3.8
+    from typing import TypedDict
+
+from generator import CloudFormationWrapper
+from generator import generate_documentation
+from resources import RESOURCES
+from utils import get_module_from_config
+from utils import camel_to_snake
+from utils import scrub_keys
 
 
 def run_git(git_dir: str, *args):
@@ -46,7 +55,7 @@ def run_git(git_dir: str, *args):
 def file_by_tag(git_dir: str) -> Dict:
     tags = run_git(git_dir, "tag")
 
-    files_by_tag: Dict= {}
+    files_by_tag: Dict = {}
     for tag in tags:
         files_by_tag[tag] = run_git(git_dir, "ls-tree", "-r", "--name-only", tag)
 
@@ -96,8 +105,9 @@ def jinja2_renderer(template_file, **kwargs):
     return template.render(kwargs)
 
 
-def _indent(text_block: str, indent: int=0) -> str:
+def indent(text_block: str, indent: int=0) -> str:
     result: str = ""
+
     for l in text_block.split("\n"):
         result += " " * indent
         result += l
@@ -114,21 +124,25 @@ def generate_params(definitions: Iterable) -> str:
     return params
 
 
-def gen_required_if(parameters: List[str], required: List[str]) -> List:
+def gen_required_if(schema: Dict) -> List:
+    primary_idenfifier = schema.get("primaryIdentifier")
+    read_only_properties = schema.get("readOnlyParameters")
+    required = schema.get("required")
     states = ["update", "delete", "get"]
-    entries = []
-    if parameters:
-        identifier = parameters[0].split('/')[-1].strip()
-        if required:
-            _required = [_camel_to_snake(r) for r in required]
-            entries.append(["state", "create", [_camel_to_snake(identifier), *_required], True])
-        [ entries.append(["state", state, [_camel_to_snake(identifier)], True]) for state in states ]
-    
+    entries: List = []
+
+    if primary_idenfifier:
+        for pr in primary_idenfifier:
+            if read_only_properties and pr not in read_only_properties:
+                if required:
+                    entries.append(["state", "create", [pr, *required], True])
+        [entries.append(["state", state, [pr], True]) for state in states]
+
     return entries
 
 
 def format_documentation(documentation: Iterable) -> str:
-    yaml.Dumper.ignore_aliases = lambda *args : True
+    yaml.Dumper.ignore_aliases = lambda *args: True
 
     def _sanitize(input):
         if isinstance(input, str):
@@ -170,7 +184,7 @@ def format_documentation(documentation: Iterable) -> str:
 def generate_argument_spec(options: Dict) -> str:
     list_of_keys_to_remove = ["description"]
     argument_spec: str = ""
-        
+
     for key in options.keys():
         argument_spec += f"\nargument_spec['{key}'] = "
         argument_spec += str(scrub_keys(options[key], list_of_keys_to_remove))
@@ -178,14 +192,25 @@ def generate_argument_spec(options: Dict) -> str:
 
 
 class Schema(TypedDict):
+    """A type for the JSONSchema spec"""
     typeName: str
     description: str
     properties: Dict
-    definitions: Optional[Dict]
-    required: List
+    definitions: Optional[Dict] = {}
+    required: Optional[List] = []
     primaryIdentifier: List
-    readOnlyProperties: Optional[List]
-    createOnlyProperties: Optional[List]
+    readOnlyProperties: Optional[List] = []
+    createOnlyProperties: Optional[List] = []
+
+
+def generate_schema(raw_content) -> Dict:
+    json_content = json.loads(raw_content)
+    schema: Dict[str, Schema] = json_content
+
+    for key, value in schema.items():
+        if isinstance(value, list):
+            schema[key] = [camel_to_snake(p.split('/')[-1].strip()) for p in value]
+    return schema
 
 
 class AnsibleModule:
@@ -193,20 +218,25 @@ class AnsibleModule:
 
     def __init__(self, schema: Iterable):
         self.schema = schema
-        self.name = MODULE_NAME_MAPPING.get(self.schema.get("typeName"))   
+        self.name = self.generate_module_name()
+
+    def generate_module_name(self):
+        splitted = self.schema.get("typeName").split("::")
+        list_to_str = ''.join(map(str, splitted[1:]))
+        return camel_to_snake(list_to_str)
 
     def is_trusted(self) -> bool:
         if get_module_from_config(self.name) is False:
             print(f"- do not build: {self.name}")
         else:
             return True
-    
+
     def write_module(self, target_dir: str, content: str):
         module_dir = target_dir / "plugins" / "modules"
         module_dir.mkdir(parents=True, exist_ok=True)
         module_py_file = module_dir / "{name}.py".format(name=self.name)
         module_py_file.write_text(content)
-    
+
     def renderer(self, target_dir: str, next_version: str):
         added_ins = get_module_added_ins(self.name, git_dir=target_dir / ".git")
 
@@ -215,22 +245,19 @@ class AnsibleModule:
             added_ins,
             next_version,
         )
-
         arguments = generate_argument_spec(documentation["options"])
         documentation_to_string = format_documentation(documentation)
-
-        required_if = gen_required_if(self.schema.get("primaryIdentifier"), self.schema.get("required"))
-
+        required_if = gen_required_if(self.schema)
         content = jinja2_renderer(
             self.template_file,
-            arguments=_indent(arguments, 4),
+            arguments=indent(arguments, 4),
             documentation=documentation_to_string,
             name=self.name,
             resource_type=f"'{self.schema.get('typeName')}'",
-            params=_indent(generate_params(documentation["options"]), 4),
-            primary_identifier=_camel_to_snake(self.schema.get("primaryIdentifier")[0].split('/')[-1].strip()),
+            params=indent(generate_params(documentation["options"]), 4),
+            primary_identifier=self.schema["primaryIdentifier"][0],
             required_if=required_if,
-            create_only_properties = self.schema.get("createOnlyProperties")
+            create_only_properties=self.schema.get("createOnlyProperties"),
         )
 
         self.write_module(target_dir, content)
@@ -251,14 +278,13 @@ def main():
     args = parser.parse_args()
 
     module_list = []
-    
+
     for type_name in RESOURCES:
         print("Generating modules")
         cloudformation = CloudFormationWrapper(boto3.client('cloudformation'))
         raw_content = cloudformation.generate_docs(type_name)
+        schema = generate_schema(raw_content)
 
-        json_content = json.loads(raw_content)
-        schema: Dict[str, Schema] = json_content
         module = AnsibleModule(schema=schema)
 
         if module.is_trusted():
