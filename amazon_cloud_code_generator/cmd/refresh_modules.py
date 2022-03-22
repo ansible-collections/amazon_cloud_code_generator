@@ -105,12 +105,12 @@ def jinja2_renderer(template_file, **kwargs):
     return template.render(kwargs)
 
 
-def indent(text_block: str, indent: int=0) -> str:
+def indent(text_block: str, indent: int = 0) -> str:
     result: str = ""
 
-    for l in text_block.split("\n"):
+    for line in text_block.split("\n"):
         result += " " * indent
-        result += l
+        result += line
         result += "\n"
     return result
 
@@ -148,7 +148,7 @@ def format_documentation(documentation: Iterable) -> str:
         if isinstance(input, str):
             return input.replace("':'", ":")
         if isinstance(input, list):
-            return [l.replace("':'", ":") for l in input]
+            return [line.replace("':'", ":") for line in input]
         if isinstance(input, dict):
             return {k: _sanitize(v) for k, v in input.items()}
         if isinstance(input, bool):

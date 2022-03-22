@@ -38,7 +38,7 @@ def scrub_keys(a_dict: Dict, list_of_keys_to_remove: List) -> Dict:
     return {k: v for k, v in ((k, scrub_keys(v, list_of_keys_to_remove)) for k, v in a_dict.items()) if k not in list_of_keys_to_remove}
 
 
-def _camel_to_snake(name: str, reversible: bool=False) -> str:
+def _camel_to_snake(name: str, reversible: bool = False) -> str:
 
     def prepend_underscore_and_lower(m):
         return '_' + m.group(0).lower()
