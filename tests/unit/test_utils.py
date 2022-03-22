@@ -1,6 +1,16 @@
-import pytest
+# (c) 2021 Red Hat Inc.
+#
+# This file is part of Ansible
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+from __future__ import absolute_import, division, print_function
+
+__metaclass__ = type
+
 
 import amazon_cloud_code_generator.cmd.utils as ut
+
+import pytest
 
 
 def test__python_type():
@@ -60,3 +70,35 @@ def test__scrub_keys():
         },
     }
     assert ut.scrub_keys(options, list_of_keys_to_remove) == options_scrubbed
+
+
+@pytest.mark.parametrize(
+    "input, expected",
+    [
+        ("", "",),
+        ("foo", "foo",),
+        ("Foo", "foo",),
+        ("FooBar", "foo_bar",),
+        ("FooBar", "foo_bar"),
+        (
+            ["Foo", "FooBar", "foo_bar", "FOOBar"],
+            ["foo", "foo_bar", "foo_bar", "foo_bar"],
+        ),
+        (
+            {
+                "Foo": "Foo",
+                "FooBar": "FooBar",
+                "foo_bar": "foo_bar",
+                "FOOBar": "FOOBar",
+            },
+            {
+                "foo": "Foo",
+                "foo_bar": "FooBar",
+                "foo_bar": "foo_bar",
+                "foo_bar": "FOOBar",
+            },
+        ),
+    ],
+)
+def test__camel_to_snake(input, expected):
+    assert ut.camel_to_snake(input) == expected

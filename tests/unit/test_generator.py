@@ -2,7 +2,6 @@ import os
 import pytest
 import json
 from pathlib import Path
-from typing import Dict
 
 import amazon_cloud_code_generator.cmd.generator as g
 import amazon_cloud_code_generator.cmd.refresh_modules as rm
@@ -50,7 +49,7 @@ def test_Description_normalize():
 
 
 def test_generate_documentation():
-    schema: Dict[str, rm.Schema] = raw_content
+    schema = rm.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     added_ins = {"module": "1.0.0"}
     documentation = g.generate_documentation(module, added_ins, "1.0.0",)

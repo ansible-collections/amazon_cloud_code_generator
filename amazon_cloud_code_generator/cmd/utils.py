@@ -23,16 +23,8 @@ def python_type(value) -> str:
     return TYPE_MAPPING.get(value, value)
 
 
-# def scrub_keys(a_dict: Dict, list_of_keys_to_remove: List) -> Dict:
-#     """Filter a_dict by removing unwanted key: values listed in list_of_keys_to_remove"""
-#     a_dict_copy = copy.deepcopy(a_dict)
-#     for key in list_of_keys_to_remove:
-#         a_dict_copy.pop(key, None)
-#
-#     return a_dict_copy
-
-
 def scrub_keys(a_dict: Dict, list_of_keys_to_remove: List) -> Dict:
+    """Filter a_dict by removing unwanted keys: values listed in list_of_keys_to_remove"""
     if not isinstance(a_dict, dict):
         return a_dict
     return {

@@ -2,7 +2,6 @@ import os
 import pytest
 import json
 from pathlib import Path
-from typing import Dict
 
 import amazon_cloud_code_generator.cmd.refresh_modules as rm
 import amazon_cloud_code_generator.cmd.generator as g
@@ -20,15 +19,13 @@ expected_content = resources("fixtures/expected_content.json")
 
 def test__gen_required_if():
     expected_required_if = [
+        ["state", "create", ["log_group_name"], True],
         ["state", "update", ["log_group_name"], True],
         ["state", "delete", ["log_group_name"], True],
         ["state", "get", ["log_group_name"], True],
     ]
-    schema: Dict[str, rm.Schema] = raw_content
-    assert (
-        rm.gen_required_if(schema["primaryIdentifier"], schema.get("required"))
-        == expected_required_if
-    )
+    schema = rm.generate_schema(json.dumps(raw_content))
+    assert rm.gen_required_if(schema) == expected_required_if
 
 
 def test__generate_params():
@@ -37,7 +34,7 @@ params['kms_key_id'] = module.params.get('kms_key_id')
 params['log_group_name'] = module.params.get('log_group_name')
 params['retention_in_days'] = module.params.get('retention_in_days')
 params['tags'] = module.params.get('tags')"""
-    schema: Dict[str, rm.Schema] = raw_content
+    schema = rm.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     added_ins = {"module": "1.0.0"}
     documentation = g.generate_documentation(module, added_ins, "",)
@@ -139,7 +136,7 @@ version_added: 1.0.0
 requirements: []
 '''"""
 
-    schema: Dict[str, rm.Schema] = raw_content
+    schema = rm.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     added_ins = {"module": "1.0.0"}
     documentation = g.generate_documentation(module, added_ins, "1.0.0",)
@@ -156,7 +153,7 @@ argument_spec['tags'] = {'type': 'list', 'elements': 'dict', 'suboptions': {'key
 argument_spec['state'] = {'type': 'str', 'choices': ['create', 'update', 'delete', 'list', 'describe', 'get'], 'default': 'create'}
 argument_spec['wait'] = {'type': 'bool', 'default': False}
 argument_spec['wait_timeout'] = {'type': 'int', 'default': 320}"""
-    schema: Dict[str, rm.Schema] = raw_content
+    schema = rm.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     added_ins = {"module": "1.0.0"}
     documentation = g.generate_documentation(module, added_ins, "",)
@@ -165,13 +162,13 @@ argument_spec['wait_timeout'] = {'type': 'int', 'default': 320}"""
 
 
 def test_AnsibleModule():
-    schema: Dict[str, rm.Schema] = raw_content
+    schema = rm.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     assert module.name == "logs_log_group"
 
 
 def test_AnsibleModuleBase_is_trusted():
-    schema: Dict[str, rm.Schema] = raw_content
+    schema = rm.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     assert module.is_trusted()
     module.name = "something_we_dont_trust"
