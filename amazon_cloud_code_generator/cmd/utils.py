@@ -35,20 +35,25 @@ def python_type(value) -> str:
 def scrub_keys(a_dict: Dict, list_of_keys_to_remove: List) -> Dict:
     if not isinstance(a_dict, dict):
         return a_dict
-    return {k: v for k, v in ((k, scrub_keys(v, list_of_keys_to_remove)) for k, v in a_dict.items()) if k not in list_of_keys_to_remove}
+    return {
+        k: v
+        for k, v in (
+            (k, scrub_keys(v, list_of_keys_to_remove)) for k, v in a_dict.items()
+        )
+        if k not in list_of_keys_to_remove
+    }
 
 
 def _camel_to_snake(name: str, reversible: bool = False) -> str:
-
     def prepend_underscore_and_lower(m):
-        return '_' + m.group(0).lower()
+        return "_" + m.group(0).lower()
 
     if reversible:
-        upper_pattern = r'[A-Z]'
+        upper_pattern = r"[A-Z]"
     else:
         # Cope with pluralized abbreviations such as TargetGroupARNs
         # that would otherwise be rendered target_group_ar_ns
-        upper_pattern = r'[A-Z]{3,}s$'
+        upper_pattern = r"[A-Z]{3,}s$"
 
     s1 = re.sub(upper_pattern, prepend_underscore_and_lower, name)
     # Handle when there was nothing before the plural_pattern
@@ -58,10 +63,10 @@ def _camel_to_snake(name: str, reversible: bool = False) -> str:
         return s1
 
     # Remainder of solution seems to be https://stackoverflow.com/a/1176023
-    first_cap_pattern = r'(.)([A-Z][a-z]+)'
-    all_cap_pattern = r'([a-z0-9])([A-Z]+)'
-    s2 = re.sub(first_cap_pattern, r'\1_\2', s1)
-    return re.sub(all_cap_pattern, r'\1_\2', s2).lower()
+    first_cap_pattern = r"(.)([A-Z][a-z]+)"
+    all_cap_pattern = r"([a-z0-9])([A-Z]+)"
+    s2 = re.sub(first_cap_pattern, r"\1_\2", s1)
+    return re.sub(all_cap_pattern, r"\1_\2", s2).lower()
 
 
 def camel_to_snake(data):
@@ -81,7 +86,7 @@ def camel_to_snake(data):
 
 def get_module_from_config(module: str):
     raw_content = pkg_resources.resource_string(
-       "amazon_cloud_code_generator", "config/modules.yaml"
+        "amazon_cloud_code_generator", "config/modules.yaml"
     )
     for i in yaml.safe_load(raw_content):
         if module in i:

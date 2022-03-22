@@ -17,12 +17,14 @@ import traceback
 BOTO3_IMP_ERR = None
 try:
     import boto3
+
     HAS_BOTO3 = True
 except ImportError:
     BOTO3_IMP_ERR = traceback.format_exc()
     HAS_BOTO3 = False
 
 from typing import Dict, Iterable, List, Optional
+
 try:
     # Python < 3.8
     # pip install mypy_extensions
@@ -73,12 +75,7 @@ def get_module_added_ins(module_name: str, git_dir: str) -> Dict:
             if not added_ins["module"]:
                 added_ins["module"] = tag
             content = "\n".join(
-                run_git(
-                    git_dir,
-                    "cat-file",
-                    "--textconv",
-                    f"{tag}:{module}",
-                )
+                run_git(git_dir, "cat-file", "--textconv", f"{tag}:{module}",)
             )
             try:
                 ast_file = redbaron.RedBaron(content)
@@ -193,6 +190,7 @@ def generate_argument_spec(options: Dict) -> str:
 
 class Schema(TypedDict):
     """A type for the JSONSchema spec"""
+
     typeName: str
     description: str
     properties: Dict
@@ -209,7 +207,7 @@ def generate_schema(raw_content) -> Dict:
 
     for key, value in schema.items():
         if isinstance(value, list):
-            schema[key] = [camel_to_snake(p.split('/')[-1].strip()) for p in value]
+            schema[key] = [camel_to_snake(p.split("/")[-1].strip()) for p in value]
     return schema
 
 
@@ -222,7 +220,7 @@ class AnsibleModule:
 
     def generate_module_name(self):
         splitted = self.schema.get("typeName").split("::")
-        list_to_str = ''.join(map(str, splitted[1:]))
+        list_to_str = "".join(map(str, splitted[1:]))
         return camel_to_snake(list_to_str)
 
     def is_trusted(self) -> bool:
@@ -240,11 +238,7 @@ class AnsibleModule:
     def renderer(self, target_dir: str, next_version: str):
         added_ins = get_module_added_ins(self.name, git_dir=target_dir / ".git")
 
-        documentation = generate_documentation(
-            self,
-            added_ins,
-            next_version,
-        )
+        documentation = generate_documentation(self, added_ins, next_version,)
         arguments = generate_argument_spec(documentation["options"])
         documentation_to_string = format_documentation(documentation)
         required_if = gen_required_if(self.schema)
@@ -281,16 +275,14 @@ def main():
 
     for type_name in RESOURCES:
         print("Generating modules")
-        cloudformation = CloudFormationWrapper(boto3.client('cloudformation'))
+        cloudformation = CloudFormationWrapper(boto3.client("cloudformation"))
         raw_content = cloudformation.generate_docs(type_name)
         schema = generate_schema(raw_content)
 
         module = AnsibleModule(schema=schema)
 
         if module.is_trusted():
-            module.renderer(
-                target_dir=args.target_dir, next_version=args.next_version
-            )
+            module.renderer(target_dir=args.target_dir, next_version=args.next_version)
             module_list.append(module.name)
 
     files = [f"plugins/modules/{module}.py" for module in module_list]
@@ -298,9 +290,7 @@ def main():
     files += ["plugins/module_utils/utils.py"]
     ignore_dir = args.target_dir / "tests" / "sanity"
     ignore_dir.mkdir(parents=True, exist_ok=True)
-    ignore_content = (
-        "plugins/modules/s3_bucket.py pep8!skip\n"  # E501: line too long (189 > 160 characters)
-    )
+    ignore_content = "plugins/modules/s3_bucket.py pep8!skip\n"  # E501: line too long (189 > 160 characters)
 
     for version in ["2.9", "2.10", "2.11", "2.12", "2.13"]:
         skip_list = [
@@ -361,15 +351,15 @@ def main():
     module_utils_dir.mkdir(parents=True, exist_ok=True)
     vmware_rest_dest = module_utils_dir / "core.py"
     vmware_rest_dest.write_bytes(
-       pkg_resources.resource_string(
-           "amazon_cloud_code_generator", "module_utils/core.py"
-       )
+        pkg_resources.resource_string(
+            "amazon_cloud_code_generator", "module_utils/core.py"
+        )
     )
     vmware_rest_dest = module_utils_dir / "utils.py"
     vmware_rest_dest.write_bytes(
-       pkg_resources.resource_string(
-           "amazon_cloud_code_generator", "module_utils/utils.py"
-       )
+        pkg_resources.resource_string(
+            "amazon_cloud_code_generator", "module_utils/utils.py"
+        )
     )
 
 

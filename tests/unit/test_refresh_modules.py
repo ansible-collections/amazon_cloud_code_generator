@@ -20,10 +20,15 @@ expected_content = resources("fixtures/expected_content.json")
 
 def test__gen_required_if():
     expected_required_if = [
-        ['state', 'update', ['log_group_name'], True], ['state', 'delete', ['log_group_name'], True], ['state', 'get', ['log_group_name'], True]
+        ["state", "update", ["log_group_name"], True],
+        ["state", "delete", ["log_group_name"], True],
+        ["state", "get", ["log_group_name"], True],
     ]
     schema: Dict[str, rm.Schema] = raw_content
-    assert rm.gen_required_if(schema["primaryIdentifier"], schema.get("required")) == expected_required_if
+    assert (
+        rm.gen_required_if(schema["primaryIdentifier"], schema.get("required"))
+        == expected_required_if
+    )
 
 
 def test__generate_params():
@@ -34,12 +39,8 @@ params['retention_in_days'] = module.params.get('retention_in_days')
 params['tags'] = module.params.get('tags')"""
     schema: Dict[str, rm.Schema] = raw_content
     module = rm.AnsibleModule(schema=schema)
-    added_ins = {"module": '1.0.0'}
-    documentation = g.generate_documentation(
-            module,
-            added_ins,
-            "",
-    )
+    added_ins = {"module": "1.0.0"}
+    documentation = g.generate_documentation(module, added_ins, "",)
     assert rm.generate_params(documentation["options"]) == expected_params
 
 
@@ -140,12 +141,8 @@ requirements: []
 
     schema: Dict[str, rm.Schema] = raw_content
     module = rm.AnsibleModule(schema=schema)
-    added_ins = {"module": '1.0.0'}
-    documentation = g.generate_documentation(
-            module,
-            added_ins,
-            "1.0.0",
-    )
+    added_ins = {"module": "1.0.0"}
+    documentation = g.generate_documentation(module, added_ins, "1.0.0",)
 
     assert rm.format_documentation(documentation) == expected
 
@@ -161,12 +158,8 @@ argument_spec['wait'] = {'type': 'bool', 'default': False}
 argument_spec['wait_timeout'] = {'type': 'int', 'default': 320}"""
     schema: Dict[str, rm.Schema] = raw_content
     module = rm.AnsibleModule(schema=schema)
-    added_ins = {"module": '1.0.0'}
-    documentation = g.generate_documentation(
-            module,
-            added_ins,
-            "",
-    )
+    added_ins = {"module": "1.0.0"}
+    documentation = g.generate_documentation(module, added_ins, "",)
 
     assert rm.generate_argument_spec(documentation["options"]) == expected_argument_spec
 

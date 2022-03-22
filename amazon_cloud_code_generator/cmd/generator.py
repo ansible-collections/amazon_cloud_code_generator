@@ -20,7 +20,7 @@ class Description:
     @classmethod
     def normalize(cls, string: str, definitions: Iterable = {}) -> List[str]:
         with_no_line_break: List[str] = []
-        sentences = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', string)
+        sentences = re.split(r"(?<=[^A-Z].[.?]) +(?=[A-Z])", string)
         sentences[:] = [x for x in sentences if x]
 
         for line in sentences:
@@ -38,10 +38,19 @@ class Description:
     @classmethod
     def clean_up(cls, definitions: Iterable, my_string: str) -> str:
         values = set()
-        ignored_keys = set([
-            "JavaScript", "EventBridge", "CloudFormation", "CloudWatch", "ACLs",
-            "XMLHttpRequest", "DDThh", "ARNs", "VPCs"
-        ])
+        ignored_keys = set(
+            [
+                "JavaScript",
+                "EventBridge",
+                "CloudFormation",
+                "CloudWatch",
+                "ACLs",
+                "XMLHttpRequest",
+                "DDThh",
+                "ARNs",
+                "VPCs",
+            ]
+        )
         ignored_values = set(["PUT", "S3"])
 
         def get_values(a_dict):
@@ -87,8 +96,8 @@ class Description:
             """Find matching string using a pattern and rewrite it as needed."""
             matches = re.findall(pattern, my_string)
             if matches:
-                output = re.sub(r'\d+', rewrite_value, my_string)
-                output = re.sub(r'(?<!^)(?<!\. )[A-Z][a-z]+', rewrite_name, output)
+                output = re.sub(r"\d+", rewrite_value, my_string)
+                output = re.sub(r"(?<!^)(?<!\. )[A-Z][a-z]+", rewrite_name, output)
                 return output
             return my_string
 
@@ -98,13 +107,13 @@ class Description:
             Find uppercase words (likely to be values like EXAMPLE or EXAMPLE_EXAMPLE and rewrite with C(EXAMPLE)).
             """
             lword = re.sub(r"([A-Z]+[A-Za-z]+)+([A-Z][a-z]+)+", rewrite_name, line)
-            lword = re.sub(r'[A-Z_]+[0-9A-Z]+', rewrite_value, lword)
+            lword = re.sub(r"[A-Z_]+[0-9A-Z]+", rewrite_value, lword)
             return lword
 
         my_string = format_string(my_string)
 
         # Find link and replace it with U(link)
-        my_string = re.sub(r'(https?://[^\s]+)', rewrite_link, my_string)
+        my_string = re.sub(r"(https?://[^\s]+)", rewrite_link, my_string)
 
         # Cleanup phrase removing square brackets contained words
         my_string = re.sub(r"[\[].*?[\]]", "", my_string)
@@ -118,8 +127,8 @@ class Description:
         my_string = re.sub(r"TRUE", "C(True)", my_string)
 
         # Cleanup some quotes
-        my_string = my_string.replace('"', '')
-        my_string = my_string.replace("'", '')
+        my_string = my_string.replace('"', "")
+        my_string = my_string.replace("'", "")
 
         return my_string
 
@@ -146,17 +155,25 @@ class Documentation:
                     key = "suboptions"
 
                 if "$ref" in item:
-                    lookup_param = item['$ref'].split('/')[-1].strip()
+                    lookup_param = item["$ref"].split("/")[-1].strip()
                     if definitions.get(lookup_param):
                         result = definitions[lookup_param]
                         item.pop("$ref")
                         if item.get("description") and result.get("description"):
                             if isinstance(item["description"], list):
                                 item["description"].extend(result.pop("description"))
-                                item["description"] = list(Description.normalize(item["description"], self.definitions))
+                                item["description"] = list(
+                                    Description.normalize(
+                                        item["description"], self.definitions
+                                    )
+                                )
                             else:
                                 item["description"] += result.pop("description")
-                                item["description"] = list(Description.normalize(item["description"], self.definitions))
+                                item["description"] = list(
+                                    Description.normalize(
+                                        item["description"], self.definitions
+                                    )
+                                )
 
                         item.update(result)
                         options[key] = item
@@ -165,7 +182,9 @@ class Documentation:
                 if key == "type":
                     options[key] = python_type(options[key])
                 if key == "description":
-                    options[key] = list(Description.normalize(options[key], self.definitions))
+                    options[key] = list(
+                        Description.normalize(options[key], self.definitions)
+                    )
                 if key == "const":
                     options["default"] = options.pop(key)
 
@@ -180,7 +199,9 @@ class Documentation:
             if isinstance(v, dict):
                 if "items" in a_dict[k]:
                     if a_dict[k]["items"].get("type"):
-                        a_dict[k]["elements"] = python_type(a_dict_copy[k]["items"].pop("type"))
+                        a_dict[k]["elements"] = python_type(
+                            a_dict_copy[k]["items"].pop("type")
+                        )
                     a_dict[k] = dict(a_dict_copy[k], **a_dict[k].pop("items"))
                     v = a_dict[k]
 
@@ -193,12 +214,20 @@ class Documentation:
 
     def preprocess(self) -> Iterable:
         list_of_keys_to_remove = [
-            "additionalProperties", "insertionOrder", "uniqueItems",
-            "pattern", "examples", "maxLength", "minLength", "format"
+            "additionalProperties",
+            "insertionOrder",
+            "uniqueItems",
+            "pattern",
+            "examples",
+            "maxLength",
+            "minLength",
+            "format",
         ]
         self.replace_keys(self.options, self.definitions)
         self.ensure_required(self.options)
-        sanitized_options: Iterable = camel_to_snake(scrub_keys(self.options, list_of_keys_to_remove))
+        sanitized_options: Iterable = camel_to_snake(
+            scrub_keys(self.options, list_of_keys_to_remove)
+        )
 
         if self.required and all(self.required):
             for r in self.required:
@@ -207,7 +236,9 @@ class Documentation:
         return sanitized_options
 
 
-def generate_documentation(module: object, added_ins: Dict, next_version: str) -> Iterable:
+def generate_documentation(
+    module: object, added_ins: Dict, next_version: str
+) -> Iterable:
     """Format and generate the AnsibleModule documentation"""
 
     module_name = module.name
@@ -250,7 +281,7 @@ def generate_documentation(module: object, added_ins: Dict, next_version: str) -
                     "I(state=describe) or I(state=get) retrieves information on an existing resource.",
                 ],
                 "type": "str",
-                "choices": ['create', 'update', 'delete', 'list', 'describe', 'get'],
+                "choices": ["create", "update", "delete", "list", "describe", "get"],
                 "default": "create",
             },
             "wait": {
@@ -259,7 +290,9 @@ def generate_documentation(module: object, added_ins: Dict, next_version: str) -
                 "default": False,
             },
             "wait_timeout": {
-                "description": ["How many seconds to wait for an operation to complete before timing out."],
+                "description": [
+                    "How many seconds to wait for an operation to complete before timing out."
+                ],
                 "type": "int",
                 "default": 320,
             },
@@ -276,6 +309,7 @@ def generate_documentation(module: object, added_ins: Dict, next_version: str) -
 
 class CloudFormationWrapper:
     """Encapsulates Amazon CloudFormation operations."""
+
     def __init__(self, client):
         """
         :param client: A Boto3 CloudFormation client
@@ -290,6 +324,6 @@ class CloudFormationWrapper:
             --type RESOURCE
         """
         # TODO: include version
-        response = self.client.describe_type(Type='RESOURCE', TypeName=type_name)
+        response = self.client.describe_type(Type="RESOURCE", TypeName=type_name)
 
-        return response.get('Schema')
+        return response.get("Schema")
