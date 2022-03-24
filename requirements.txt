@@ -1,3 +1,7 @@
-pyyaml
 jinja2
+ruamel.yaml
 pbr
+pyyaml
+redbaron
+baron
+boto3

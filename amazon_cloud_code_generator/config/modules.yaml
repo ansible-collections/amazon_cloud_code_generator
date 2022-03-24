@@ -1,0 +1,30 @@
+---
+- s3_bucket:
+    documentation:
+      short_description: Manage S3 buckets
+      description: Create and manage S3 buckets (list, create, update, describe, delete).
+- logs_log_group:
+    documentation:
+      short_description: Create and manage log groups
+      description: Create and manage log groups (list, create, update, describe, delete).
+- iam_role:
+    documentation:
+      short_description: Create and manage EC2 instances
+      description: Manage EC2 instances (list, create, update, describe, delete).
+- ec2_route_table:
+    documentation:
+      short_description: Create and manage route tables for AWS virtual private clouds (VPCs)
+      description: Create and manage route tables for AWS VPCs (list, create, update, describe, delete).
+- ec2_vpc:
+    documentation:
+      short_description: Create and manage AWS virtual private clouds (VPCs)
+      description: Create and manage AWS VPCs (list, create, update, describe, delete).
+- ec2_subnet:
+    documentation:
+      short_description: Create and manage subnets in AWS virtual private clouds (VPCSs)
+      description: Create and manage subnets in AWS VPCs (list, create, update, describe, delete).
+- ec2_internet_gateway:
+    documentation:
+      short_description: Create and manage AWS VPC Internet gateways
+      description: Create and manage AWS VPC Internet gateways (list, create, update, describe, delete).
+- ec2_subnet_route_table_association:
