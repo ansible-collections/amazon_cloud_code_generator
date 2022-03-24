@@ -317,14 +317,17 @@ class CloudFormationWrapper:
         """
         self.client = client
 
-    def generate_docs(self, type_name: str):
+    def generate_docs(self, params):
         """
         Equivalent to
         aws cloudformation describe-type \
             --type-name My::Logs::LogGroup \
             --type RESOURCE
+            --version-id VERSION
         """
-        # TODO: include version
-        response = self.client.describe_type(Type="RESOURCE", TypeName=type_name)
+        # If you specify a --version-id, describe-type returns information about that specific extension version.
+        # Otherwise, it returns information about the default extension version.
+ 
+        response = self.client.describe_type(params)
 
         return response.get("Schema")

@@ -272,6 +272,9 @@ def main():
     parser.add_argument(
         "--next-version", type=str, default="TODO", help="the next major version",
     )
+    parser.add_argument(
+        "--schema-version-id", type=str, help="the AWS resource schema version id",
+    )
     args = parser.parse_args()
 
     module_list = []
@@ -279,7 +282,14 @@ def main():
     for type_name in RESOURCES:
         print("Generating modules")
         cloudformation = CloudFormationWrapper(boto3.client("cloudformation"))
-        raw_content = cloudformation.generate_docs(type_name)
+        params = {
+            "Type": "RESOURCE",
+            "TypeName": type_name
+        }
+        if args.schema_version_id:
+            params["VersionId"] = args.schema_version_id
+
+        raw_content = cloudformation.generate_docs(**params)
         schema = generate_schema(raw_content)
 
         module = AnsibleModule(schema=schema)
