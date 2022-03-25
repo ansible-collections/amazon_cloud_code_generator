@@ -8,9 +8,4 @@ RESOURCES = [
     "AWS::S3::Bucket",
     "AWS::Logs::LogGroup",
     "AWS::IAM::Role",
-    "AWS::EC2::RouteTable",
-    "AWS::EC2::VPC",
-    "AWS::EC2::Subnet",
-    "AWS::EC2::InternetGateway",
-    "AWS::EC2::SubnetRouteTableAssociation",
 ]
