@@ -327,7 +327,7 @@ class CloudFormationWrapper:
         """
         # If you specify a --version-id, describe-type returns information about that specific extension version.
         # Otherwise, it returns information about the default extension version.
- 
+
         response = self.client.describe_type(params)
 
         return response.get("Schema")
