@@ -67,12 +67,7 @@ def get_module_added_ins(module_name: str, git_dir: str) -> Dict:
             if not added_ins["module"]:
                 added_ins["module"] = tag
             content = "\n".join(
-                run_git(
-                    git_dir,
-                    "cat-file",
-                    "--textconv",
-                    f"{tag}:{module}",
-                )
+                run_git(git_dir, "cat-file", "--textconv", f"{tag}:{module}",)
             )
             try:
                 ast_file = redbaron.RedBaron(content)
@@ -267,10 +262,7 @@ def main():
         help="location of the target repository (default: ./cloud)",
     )
     parser.add_argument(
-        "--next-version",
-        type=str,
-        default="TODO",
-        help="the next major version",
+        "--next-version", type=str, default="TODO", help="the next major version",
     )
     args = parser.parse_args()
 

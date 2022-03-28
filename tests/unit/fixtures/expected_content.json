@@ -11,6 +11,14 @@
             ],
             "type": "str"
         },
+        "purge_tags": {
+            "default": true,
+            "description": [
+                "Remove tags not listed in I(tags)."
+            ],
+            "required": false,
+            "type": "bool"
+        },
         "kms_key_id": {
             "description": [
                 "The Amazon Resource Name (ARN) of the CMK to use when encrypting log data."
@@ -43,33 +51,6 @@
                 3653
             ]
         },
-        "tags": {
-            "description": [
-                "A key-value pair to associate with a resource."
-            ],
-            "type": "list",
-            "elements": "dict",
-            "suboptions": {
-                "key": {
-                    "type": "str",
-                    "description": [
-                        "The key name of the tag.",
-                        "You can specify a value that is 1 to 128 Unicode characters in length and cannot be prefixed with aws:.",
-                        "You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., :, /, =, +, - and @."
-                    ],
-                    "required": true
-                },
-                "value": {
-                    "type": "str",
-                    "description": [
-                        "The value for the tag.",
-                        "You can specify a value that is 0 to 256 Unicode characters in length.",
-                        "You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., :, /, =, +, - and @."
-                    ],
-                    "required": true
-                }
-            }
-        },
         "state": {
             "description": [
                 "Goal state for resouirce.",
@@ -89,6 +70,17 @@
                 "get"
             ],
             "default": "create"
+        },
+        "tags": {
+            "aliases": [
+                "resource_tags"
+            ],
+            "description": [
+                "A dict of tags to apply to the resource.",
+                "To remove all tags set I(tags={}) and I(purge_tags=true)."
+            ],
+            "required": false,
+            "type": "dict"
         },
         "wait": {
             "description": [
