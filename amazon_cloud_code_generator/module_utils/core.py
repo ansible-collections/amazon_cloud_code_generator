@@ -290,7 +290,10 @@ class CloudControlResource(object):
         return changed
 
     def update_resource(
-        self, resource: Dict, params_to_set: Dict, create_only_params: List,
+        self,
+        resource: Dict,
+        params_to_set: Dict,
+        create_only_params: List,
     ) -> bool:
         identifier = resource["ResourceDescription"]["Identifier"]
         type_name = resource["TypeName"]
@@ -318,7 +321,9 @@ class CloudControlResource(object):
                     self.check_in_progress_requests(type_name, identifier)
 
                     response = self.client.update_resource(
-                        TypeName=type_name, Identifier=identifier, PatchDocument=str(patch),
+                        TypeName=type_name,
+                        Identifier=identifier,
+                        PatchDocument=str(patch),
                     )
                     if self.module.params.get("wait"):
                         self.wait_until_resource_request_success(
