@@ -300,6 +300,24 @@ def generate_documentation(
         }
     )
 
+    # module.schema.get("taggable") is not returned always (even if the resource supports tagging)
+    if module.schema.get("taggable") or documentation["options"].get("tags"):
+        documentation["options"]["tags"] = {
+            "description": [
+                "A dict of tags to apply to the resource.",
+                "To remove all tags set I(tags={}) and I(purge_tags=true).",
+            ],
+            "type": "dict",
+            "required": False,
+            "aliases": ["resource_tags"],
+        }
+        documentation["options"]["purge_tags"] = {
+            "description": ["Remove tags not listed in I(tags)."],
+            "type": "bool",
+            "required": False,
+            "default": True,
+        }
+
     module_from_config = get_module_from_config(module_name)
     if module_from_config and "documentation" in module_from_config:
         for k, v in module_from_config["documentation"].items():
