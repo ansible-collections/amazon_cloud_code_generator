@@ -194,7 +194,7 @@ class CloudControlResource(object):
         type_name: str,
         identifier: str,
         params: Dict,
-        create_only_params: Optional[List],
+        create_only_params: Optional[List] = None,
     ) -> bool:
         create_only_params = create_only_params or []
         try:
