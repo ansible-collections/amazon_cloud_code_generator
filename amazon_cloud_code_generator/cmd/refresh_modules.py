@@ -67,7 +67,12 @@ def get_module_added_ins(module_name: str, git_dir: str) -> Dict:
             if not added_ins["module"]:
                 added_ins["module"] = tag
             content = "\n".join(
-                run_git(git_dir, "cat-file", "--textconv", f"{tag}:{module}",)
+                run_git(
+                    git_dir,
+                    "cat-file",
+                    "--textconv",
+                    f"{tag}:{module}",
+                )
             )
             try:
                 ast_file = redbaron.RedBaron(content)
@@ -233,7 +238,11 @@ class AnsibleModule:
 
     def renderer(self, target_dir: str, next_version: str):
         added_ins = get_module_added_ins(self.name, git_dir=target_dir / ".git")
-        documentation = generate_documentation(self, added_ins, next_version,)
+        documentation = generate_documentation(
+            self,
+            added_ins,
+            next_version,
+        )
         arguments = generate_argument_spec(documentation["options"])
         documentation_to_string = format_documentation(documentation)
         required_if = gen_required_if(self.schema)
@@ -262,7 +271,10 @@ def main():
         help="location of the target repository (default: ./cloud)",
     )
     parser.add_argument(
-        "--next-version", type=str, default="TODO", help="the next major version",
+        "--next-version",
+        type=str,
+        default="TODO",
+        help="the next major version",
     )
     args = parser.parse_args()
 
