@@ -75,10 +75,22 @@ def test__scrub_keys():
 @pytest.mark.parametrize(
     "input, expected",
     [
-        ("", "",),
-        ("foo", "foo",),
-        ("Foo", "foo",),
-        ("FooBar", "foo_bar",),
+        (
+            "",
+            "",
+        ),
+        (
+            "foo",
+            "foo",
+        ),
+        (
+            "Foo",
+            "foo",
+        ),
+        (
+            "FooBar",
+            "foo_bar",
+        ),
         ("FooBar", "foo_bar"),
         (
             ["Foo", "FooBar", "foo_bar", "FOOBar"],
