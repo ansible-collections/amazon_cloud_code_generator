@@ -17,10 +17,14 @@ EXAMPLES = r'''
 
 RETURN = r'''
 result:
-    identifier:
-        description: The unique identifier of the resource.
-        type: str
-    properties:
-        description: The resource properties.
-        type: complex
+    description: Dictionary containing resource information.
+    returned: always
+    type: dict
+    contains:
+        identifier:
+            description: The unique identifier of the resource.
+            type: str
+        properties:
+            description: The resource properties.
+            type: complex
 '''
