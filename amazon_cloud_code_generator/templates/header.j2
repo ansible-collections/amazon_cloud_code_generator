@@ -19,12 +19,12 @@ RETURN = r'''
 result:
     description: Dictionary containing resource information.
     returned: always
-    type: dict
+    type: complex
     contains:
         identifier:
             description: The unique identifier of the resource.
             type: str
         properties:
             description: The resource properties.
-            type: complex
+            type: dict
 '''

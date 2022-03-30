@@ -208,6 +208,8 @@ class Documentation:
 
                 if "required" in v and isinstance(v["required"], list):
                     for r in v["required"]:
+                        if "default" in a_dict[k]["suboptions"][r]:
+                            continue
                         a_dict[k]["suboptions"][r]["required"] = True
                     a_dict[k].pop("required")
 
@@ -223,6 +225,8 @@ class Documentation:
             "maxLength",
             "minLength",
             "format",
+            "minimum",
+            "maximum",
         ]
         self.replace_keys(self.options, self.definitions)
         self.ensure_required(self.options)

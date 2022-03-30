@@ -185,6 +185,9 @@ def generate_argument_spec(options: Dict) -> str:
     for key in options.keys():
         argument_spec += f"\nargument_spec['{key}'] = "
         argument_spec += str(scrub_keys(options[key], list_of_keys_to_remove))
+
+    argument_spec = argument_spec.replace("suboptions", "options")
+
     return argument_spec
 
 
@@ -293,14 +296,15 @@ def main():
             module.renderer(target_dir=args.target_dir, next_version=args.next_version)
             module_list.append(module.name)
 
-    files = [f"plugins/modules/{module}.py" for module in module_list]
-    files += ["plugins/module_utils/core.py"]
-    files += ["plugins/module_utils/utils.py"]
+    modules = [f"plugins/modules/{module}.py" for module in module_list]
+    module_utils = ["plugins/module_utils/core.py", "plugins/module_utils/utils.py"]
+
     ignore_dir = args.target_dir / "tests" / "sanity"
     ignore_dir.mkdir(parents=True, exist_ok=True)
-    ignore_content = "plugins/modules/s3_bucket.py pep8!skip\n"  # E501: line too long (189 > 160 characters)
 
-    for version in ["2.9", "2.10", "2.11", "2.12", "2.13"]:
+    for version in ["2.9", "2.10", "2.11", "2.12", "2.13", "2.14"]:
+        per_version_ignore_content = ""
+
         skip_list = [
             "compile-2.7!skip",  # Py3.6+
             "compile-3.5!skip",  # Py3.6+
@@ -309,26 +313,37 @@ def main():
             "future-import-boilerplate!skip",  # Py2 only
             "metaclass-boilerplate!skip",  # Py2 only
         ]
+
         # No py26 tests with 2.13 and greater
         if version in ["2.9", "2.10", "2.11", "2.12"]:
             skip_list += [
                 "compile-2.6!skip",  # Py3.6+
                 "import-2.6!skip",  # Py3.6+
             ]
-        if version in ["2.9", "2.10", "2.11"]:
-            skip_list += [
-                "validate-modules:missing-if-name-main",
-            ]
 
-        per_version_ignore_content = ignore_content
-        for f in files:
-            for test in skip_list:
-                # Sanity test 'validate-modules' does not test path 'plugins/module_utils/core.py'
+        no_validate_skip_needed = ["plugins/modules/logs_log_group.py"]
+
+        for f in module_utils:
+            for skip in skip_list:
+                per_version_ignore_content += f"{f} {skip}\n"
+
+        for f in modules:
+            for skip in skip_list:
+                per_version_ignore_content += f"{f} {skip}\n"
+
+            if f not in no_validate_skip_needed:
                 if version in ["2.9", "2.10", "2.11"]:
-                    if f == "plugins/module_utils/core.py":
-                        if test.startswith("validate-modules:"):
-                            continue
-                per_version_ignore_content += f"{f} {test}\n"
+                    validate_skip_list = [
+                        "validate-modules:invalid-documentation",
+                        "validate-modules:no-log-needed",
+                    ]
+                    for skip in validate_skip_list:
+                        per_version_ignore_content += f"{f} {skip}\n"
+
+            if version in ["2.9", "2.10", "2.11"]:
+                per_version_ignore_content += (
+                    f"{f} validate-modules:parameter-state-invalid-choice\n"
+                )
 
         ignore_file = ignore_dir / f"ignore-{version}.txt"
         ignore_file.write_text(per_version_ignore_content)
