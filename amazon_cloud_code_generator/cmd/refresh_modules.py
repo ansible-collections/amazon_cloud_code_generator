@@ -159,6 +159,7 @@ def format_documentation(documentation: Iterable) -> str:
         "author",
         "version_added",
         "requirements",
+        "extends_documentation_fragment",
         "seealso",
         "notes",
     ]
