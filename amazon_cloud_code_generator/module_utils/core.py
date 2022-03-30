@@ -40,7 +40,7 @@ from itertools import count
 from typing import Iterable, List, Dict, Optional
 
 from ansible_collections.amazon.aws.plugins.module_utils.ec2 import AWSRetry
-from ansible_collections.amazon.cloud.plugins.module_utils.utils import (
+from .utils import (
     JsonPatch,
     make_op,
     op,
