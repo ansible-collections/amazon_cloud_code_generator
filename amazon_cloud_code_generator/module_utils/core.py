@@ -79,7 +79,8 @@ class CloudControlResource(object):
     def wait_until_resource_request_success(self, request_token):
         try:
             self.client.get_waiter("resource_request_success").wait(
-                RequestToken=request_token, WaiterConfig=self._waiter_config,
+                RequestToken=request_token,
+                WaiterConfig=self._waiter_config,
             )
         except botocore.exceptions.WaiterError as e:
             self.module.fail_json_aws(
