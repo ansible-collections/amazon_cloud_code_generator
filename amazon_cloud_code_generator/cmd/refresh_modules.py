@@ -23,15 +23,7 @@ except ImportError:
     BOTO3_IMP_ERR = traceback.format_exc()
     HAS_BOTO3 = False
 
-from typing import Dict, Iterable, List, Optional
-
-try:
-    # Python < 3.8
-    # pip install mypy_extensions
-    from mypy_extensions import TypedDict
-except ImportError:
-    # Python 3.8
-    from typing import TypedDict
+from typing import Dict, Iterable, List, Optional, TypedDict
 
 from .resources import RESOURCES
 from .generator import CloudFormationWrapper
@@ -119,7 +111,7 @@ def indent(text_block: str, indent: int = 0) -> str:
 
 def generate_params(definitions: Iterable) -> str:
     params: str = ""
-    keys = sorted(definitions.keys() - ["wait", "wait_timeout", "state"])
+    keys = sorted(definitions.keys() - ["wait", "wait_timeout", "state", "purge_tags"])
     for key in keys:
         params += f"\nparams['{key}'] = module.params.get('{key}')"
 
@@ -201,11 +193,12 @@ class Schema(TypedDict):
     typeName: str
     description: str
     properties: Dict
-    definitions: Optional[Dict] = {}
-    required: Optional[List] = []
+    definitions: Optional[Dict]
+    required: Optional[List]
     primaryIdentifier: List
-    readOnlyProperties: Optional[List] = []
-    createOnlyProperties: Optional[List] = []
+    readOnlyProperties: Optional[List]
+    createOnlyProperties: Optional[List]
+    taggable: Optional[bool]
 
 
 def generate_schema(raw_content) -> Dict:
@@ -245,7 +238,6 @@ class AnsibleModule:
 
     def renderer(self, target_dir: str, next_version: str):
         added_ins = get_module_added_ins(self.name, git_dir=target_dir / ".git")
-
         documentation = generate_documentation(
             self,
             added_ins,

@@ -57,6 +57,12 @@ options:
         - If you dont specify a name, AWS CloudFormation generates a unique ID for
             the log group.
         type: str
+    purge_tags:
+        default: true
+        description:
+        - Remove tags not listed in I(tags).
+        required: false
+        type: bool
     retention_in_days:
         choices:
         - 1
@@ -99,28 +105,13 @@ options:
         - I(state=describe) or I(state=get) retrieves information on an existing resource.
         type: str
     tags:
+        aliases:
+        - resource_tags
         description:
-        - A key-value pair to associate with a resource.
-        elements: dict
-        suboptions:
-            key:
-                description:
-                - The key name of the tag.
-                - You can specify a value that is 1 to 128 Unicode characters in length
-                    and cannot be prefixed with aws:.
-                - 'You can use any of the following characters: the set of Unicode
-                    letters, digits, whitespace, _, ., :, /, =, +, - and @.'
-                required: true
-                type: str
-            value:
-                description:
-                - The value for the tag.
-                - You can specify a value that is 0 to 256 Unicode characters in length.
-                - 'You can use any of the following characters: the set of Unicode
-                    letters, digits, whitespace, _, ., :, /, =, +, - and @.'
-                required: true
-                type: str
-        type: list
+        - A dict of tags to apply to the resource.
+        - To remove all tags set I(tags={}) and I(purge_tags=true).
+        required: false
+        type: dict
     wait:
         default: false
         description:
@@ -149,10 +140,11 @@ def test__generate_argument_spec():
 argument_spec['log_group_name'] = {'type': 'str'}
 argument_spec['kms_key_id'] = {'type': 'str'}
 argument_spec['retention_in_days'] = {'type': 'int', 'choices': [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]}
-argument_spec['tags'] = {'type': 'list', 'elements': 'dict', 'suboptions': {'key': {'type': 'str', 'required': True}, 'value': {'type': 'str', 'required': True}}}
+argument_spec['tags'] = {'type': 'dict', 'required': False, 'aliases': ['resource_tags']}
 argument_spec['state'] = {'type': 'str', 'choices': ['create', 'update', 'delete', 'list', 'describe', 'get'], 'default': 'create'}
 argument_spec['wait'] = {'type': 'bool', 'default': False}
-argument_spec['wait_timeout'] = {'type': 'int', 'default': 320}"""
+argument_spec['wait_timeout'] = {'type': 'int', 'default': 320}
+argument_spec['purge_tags'] = {'type': 'bool', 'required': False, 'default': True}"""
     schema = rm.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     added_ins = {"module": "1.0.0"}

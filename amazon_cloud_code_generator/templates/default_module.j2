@@ -4,7 +4,8 @@ import json
 
 from ansible_collections.amazon.aws.plugins.module_utils.core import AnsibleAWSModule
 from ansible_collections.amazon.cloud.plugins.module_utils.core import CloudControlResource
-from ansible_collections.amazon.cloud.plugins.module_utils.utils import snake_dict_to_camel_dict
+from ansible_collections.amazon.cloud.plugins.module_utils.core import snake_dict_to_camel_dict
+from ansible_collections.amazon.cloud.plugins.module_utils.core import ansible_dict_to_boto3_tag_list
 
 
 def main():
@@ -28,6 +29,13 @@ def main():
     {{params}}
     # The DesiredState we pass to AWS must be a JSONArray of non-null values
     _params_to_set = {k: v for k, v in params.items() if v is not None}
+
+    # Only if resource is taggable
+    if module.params.get("tags", None):
+        _params_to_set["tags"] = ansible_dict_to_boto3_tag_list(
+            module.params["tags"]
+        )
+
     params_to_set = snake_dict_to_camel_dict(_params_to_set, capitalize_first=True)
     
     desired_state = json.dumps(params_to_set)
