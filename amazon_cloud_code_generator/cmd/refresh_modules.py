@@ -348,6 +348,16 @@ def main():
         ignore_file = ignore_dir / f"ignore-{version}.txt"
         ignore_file.write_text(per_version_ignore_content)
 
+    meta_dir = args.target_dir / "meta"
+    meta_dir.mkdir(parents=True, exist_ok=True)
+    yaml_dict = {"requires_ansible": """>=2.9.10""", "action_groups": {"aws": []}}
+    for m in module_list:
+        yaml_dict["action_groups"]["aws"].append(m)
+
+    runtime_file = meta_dir / "runtime.yml"
+    with open(runtime_file, "w") as file:
+        yaml.safe_dump(yaml_dict, file, sort_keys=False)
+
     info = VersionInfo("amazon_cloud_code_generator")
     dev_md = args.target_dir / "dev.md"
     dev_md.write_text(
