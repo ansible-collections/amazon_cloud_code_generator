@@ -356,9 +356,12 @@ def main():
         )
     )
 
-    collection_dir = pkg_resources.resource_filename("amazon_cloud_code_generator", "data")
+    collection_dir = pkg_resources.resource_filename(
+        "amazon_cloud_code_generator", "data"
+    )
     print(f"Copying collection from {collection_dir}")
     shutil.copytree(collection_dir, args.target_dir, dirs_exist_ok=True)
+
 
 if __name__ == "__main__":
     main()
