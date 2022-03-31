@@ -4,6 +4,7 @@
 import argparse
 from functools import lru_cache
 import pathlib
+import shutil
 import subprocess
 import pkg_resources
 from pbr.version import VersionInfo
@@ -355,21 +356,9 @@ def main():
         )
     )
 
-    module_utils_dir = args.target_dir / "plugins" / "module_utils"
-    module_utils_dir.mkdir(parents=True, exist_ok=True)
-    vmware_rest_dest = module_utils_dir / "core.py"
-    vmware_rest_dest.write_bytes(
-        pkg_resources.resource_string(
-            "amazon_cloud_code_generator", "module_utils/core.py"
-        )
-    )
-    vmware_rest_dest = module_utils_dir / "utils.py"
-    vmware_rest_dest.write_bytes(
-        pkg_resources.resource_string(
-            "amazon_cloud_code_generator", "module_utils/utils.py"
-        )
-    )
-
+    collection_dir = pkg_resources.resource_filename("amazon_cloud_code_generator", "data")
+    print(f"Copying collection from {collection_dir}")
+    shutil.copytree(collection_dir, args.target_dir, dirs_exist_ok=True)
 
 if __name__ == "__main__":
     main()
