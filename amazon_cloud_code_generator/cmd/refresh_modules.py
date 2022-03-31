@@ -321,7 +321,10 @@ def main():
                 "import-2.6!skip",  # Py3.6+
             ]
 
-        no_validate_skip_needed = ["plugins/modules/logs_log_group.py"]
+        no_validate_skip_needed = [
+            "plugins/modules/logs_log_group.py",
+            "plugins/modules/iam_role.py",
+        ]
 
         for f in module_utils:
             for skip in skip_list:
