@@ -337,8 +337,7 @@ def main():
             if f not in no_validate_skip_needed:
                 if version in ["2.9", "2.10", "2.11"]:
                     validate_skip_list = [
-                        "validate-modules:invalid-documentation",
-                        "validate-modules:no-log-needed",
+                        "validate-modules"
                     ]
                     for skip in validate_skip_list:
                         per_version_ignore_content += f"{f} {skip}\n"
