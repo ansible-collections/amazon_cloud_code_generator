@@ -276,15 +276,14 @@ def generate_documentation(
             "state": {
                 "description": [
                     "Goal state for resouirce.",
-                    "I(state=create) creates the resouce.",
-                    "I(state=update) updates the existing resouce.",
-                    "I(state=delete) ensures an existing instance is deleted.",
+                    "I(state=present) creates the resource if it doesn't exist, or updates to the provided state if the resource already exists.",
+                    "I(state=absent) ensures an existing instance is deleted.",
                     "I(state=list) get all the existing resources.",
                     "I(state=describe) or I(state=get) retrieves information on an existing resource.",
                 ],
                 "type": "str",
-                "choices": ["create", "update", "delete", "list", "describe", "get"],
-                "default": "create",
+                "choices": ["present", "absent", "list", "describe", "get"],
+                "default": "present",
             },
             "wait": {
                 "description": ["Wait for operation to complete before returning."],
