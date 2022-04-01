@@ -4,6 +4,7 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 
+from ast import Tuple
 import re
 import yaml
 import pkg_resources
@@ -36,6 +37,25 @@ def scrub_keys(a_dict: Dict, list_of_keys_to_remove: List) -> Dict:
     }
 
 
+def ensure_description(element: Dict, *keys, default: str = "Not Provived."):
+    """
+    Check if *keys (nested) exists in `element` (dict) and ensure it has the default value.
+    """
+    if isinstance(element, dict):
+        for key, value in element.items():
+            if key == "suboptions":
+                ensure_description(value, *keys)
+
+            if isinstance(value, dict):
+                for akey in keys:
+                    if akey not in value:
+                        element[key][akey] = [default]
+                for k, v in value.items():
+                    ensure_description(v, *keys)
+
+    return element
+
+
 def _camel_to_snake(name: str, reversible: bool = False) -> str:
     def prepend_underscore_and_lower(m):
         return "_" + m.group(0).lower()
@@ -61,13 +81,13 @@ def _camel_to_snake(name: str, reversible: bool = False) -> str:
     return re.sub(all_cap_pattern, r"\1_\2", s2).lower()
 
 
-def camel_to_snake(data):
+def camel_to_snake(data: Dict):
     if isinstance(data, str):
         return _camel_to_snake(data)
     elif isinstance(data, list):
         return [_camel_to_snake(r) for r in data]
     elif isinstance(data, dict):
-        b_dict = {}
+        b_dict: Dict = {}
         for k in data.keys():
             if isinstance(data[k], dict):
                 b_dict[_camel_to_snake(k)] = camel_to_snake(data[k])

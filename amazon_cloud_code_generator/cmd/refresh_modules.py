@@ -335,14 +335,14 @@ def main():
                 per_version_ignore_content += f"{f} {skip}\n"
 
             if f not in no_validate_skip_needed:
-                if version in ["2.9", "2.10", "2.11"]:
+                if version in ["2.10", "2.11", "2.12", "2.13", "2.14"]:
                     validate_skip_list = [
-                        "validate-modules"
+                        "validate-modules:no-log-needed",
                     ]
                     for skip in validate_skip_list:
                         per_version_ignore_content += f"{f} {skip}\n"
 
-            if version in ["2.9", "2.10", "2.11"]:
+            if version in ["2.10", "2.11", "2.12", "2.13", "2.14"]:
                 per_version_ignore_content += (
                     f"{f} validate-modules:parameter-state-invalid-choice\n"
                 )

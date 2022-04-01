@@ -114,3 +114,40 @@ def test__scrub_keys():
 )
 def test__camel_to_snake(input, expected):
     assert ut.camel_to_snake(input) == expected
+
+
+def test__ensure_description():
+    input = {
+        "foo": {"description": ["foo"], "type": "str"},
+        "bar": {
+            "type": "str",
+        },
+        "FooBar": {
+            "description": ["FooBar"],
+            "type": "list",
+            "suboptions": {
+                "foo_1": {"type": "str"},
+                "bar_1": {"type": "dict", "suboptions": {"bar_2": {"type": "str"}}},
+            },
+        },
+    }
+
+    expected = {
+        "foo": {"description": ["foo"], "type": "str"},
+        "bar": {"type": "str", "description": ["Not Provived."]},
+        "FooBar": {
+            "description": ["FooBar"],
+            "type": "list",
+            "suboptions": {
+                "foo_1": {"type": "str", "description": ["Not Provived."]},
+                "bar_1": {
+                    "type": "dict",
+                    "suboptions": {
+                        "bar_2": {"type": "str", "description": ["Not Provived."]}
+                    },
+                    "description": ["Not Provived."],
+                },
+            },
+        },
+    }
+    assert ut.ensure_description(input, "description") == expected

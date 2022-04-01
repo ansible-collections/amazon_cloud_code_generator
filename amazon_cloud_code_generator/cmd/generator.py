@@ -12,6 +12,7 @@ from .utils import python_type
 from .utils import scrub_keys
 from .utils import camel_to_snake
 from .utils import get_module_from_config
+from .utils import ensure_description
 
 
 class Description:
@@ -232,6 +233,22 @@ class Documentation:
         self.ensure_required(self.options)
         sanitized_options: Iterable = camel_to_snake(
             scrub_keys(self.options, list_of_keys_to_remove)
+        )
+
+        """
+        For all the options with a missing description field returned by the API
+        we make sure to add "description": "Not Provided." to allow
+        ansible-doc -t module amazon.cloud.module_name to succeed.
+
+        Without this workaround, sanity tests fail with (even if the ignore files
+        are populated with "validate-modules:invalid-documentation"):
+
+        >>> Standard Error
+        ERROR! Unable to retrieve documentation from 'amazon.cloud.module_name' due to:
+        All (sub-)options and return values must have a 'description' field
+        """
+        sanitized_options: Iterable = ensure_description(
+            sanitized_options, "description"
         )
 
         if self.required and all(self.required):
