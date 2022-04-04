@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, Mock
 import pytest
 
 from amazon_cloud_code_generator.module_utils.core import CloudControlResource
+from amazon_cloud_code_generator.module_utils.core import ansible_dict_to_boto3_tag_list
 
 
 @pytest.fixture
@@ -50,3 +51,22 @@ def test_present_updates_resource(ccr):
         PatchDocument='[{"op": "add", "path": "/Tags", "value": [{"Key": "k", "Value": "v"}]}]',
     )
     ccr.client.create_resource.assert_not_called()
+
+
+def test__ansible_dict_to_boto3_tag_list():
+    tags_dict = {
+        "lowerCamel": "lowerCamelValue",
+        "UpperCamel": "upperCamelValue",
+        "Normal case": "Normal Value",
+        "lower case": "lower case value",
+    }
+    expected = [
+        {"Key": "lowerCamel", "Value": "lowerCamelValue"},
+        {"Key": "UpperCamel", "Value": "upperCamelValue"},
+        {"Key": "Normal case", "Value": "Normal Value"},
+        {"Key": "lower case", "Value": "lower case value"},
+    ]
+    converted_list = ansible_dict_to_boto3_tag_list(tags_dict)
+    sorted_converted_list = sorted(converted_list, key=lambda i: (i["Key"]))
+    sorted_list = sorted(expected, key=lambda i: (i["Key"]))
+    assert sorted_converted_list == sorted_list
