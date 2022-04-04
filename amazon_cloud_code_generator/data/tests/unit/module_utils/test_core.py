@@ -53,6 +53,36 @@ def test_present_updates_resource(ccr):
     ccr.client.create_resource.assert_not_called()
 
 
+def test_absent_deletes_resource(ccr):
+    resource = {
+        "TypeName": "AWS::S3::Bucket",
+        "ResourceDescription": {
+            "Identifier": "test_bucket",
+            "Properties": '{"BucketName": "test_bucket"}',
+        },
+    }
+    ccr.client.get_resource.return_value = resource
+    changed = ccr.absent("AWS::S3::Bucket", "test_bucket")
+    assert changed
+    ccr.client.delete_resource.assert_called_with(
+        TypeName="AWS::S3::Bucket",
+        Identifier="test_bucket",
+    )
+    ccr.client.create_resource.assert_not_called()
+    ccr.client.update_resource.assert_not_called()
+
+
+def test_absent_deletes_resource_NotFound(ccr):
+    ccr.client.get_resource.side_effect = (
+        ccr.client.exceptions.ResourceNotFoundException()
+    )
+    changed = ccr.absent("AWS::S3::Bucket", "test_bucket")
+    assert changed is False
+    ccr.client.delete_resource.assert_not_called()
+    ccr.client.create_resource.assert_not_called()
+    ccr.client.update_resource.assert_not_called()
+
+
 def test__ansible_dict_to_boto3_tag_list():
     tags_dict = {
         "lowerCamel": "lowerCamelValue",
