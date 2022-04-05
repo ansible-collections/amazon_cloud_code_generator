@@ -16,7 +16,7 @@ We considered three options:
 2. Import directly from amazon.aws (create a dependency on amazon.aws). This is the least amount of effort up front, but increases the testing and maintenance burden by creating a dependency on another collection.
 3. Migrate shared code from amazon.aws to cloud.common and import from there (create a dependency on cloud.common). In the future, if we were to use turbo mode, we would already have a dependency on cloud.common. If we migrated the shared parts of amazon.aws to cloud.common and had amazon.aws, community.aws and amazon.cloud import from there, we would at least minimize the collection dependencies. Given the impact this change would have, this is not viable in the short term.
 
-In addition, it's possible we may move to a connection plugin method for boto client authentication in the future, which may remove the need for the AnsibleAWSModule.
+In addition, it's possible we may move to a connection plugin method for boto3 client authentication in the future, which may remove the need for the AnsibleAWSModule.
 
 ## Decision
 
