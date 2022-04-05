@@ -20,7 +20,7 @@ The modules will be generated in the `cloud` subdirectory by default. A differen
 
 ```tox -e refresh_modules --target-dir /somewhere/else```
 
-Whether available, the documented EXAMPLE block of the generated modules can be updated by using the following command:
+When available, the documented EXAMPLE block of the generated modules can be updated by using the following command:
 
 ```tox -e refresh_examples --target-dir /somewhere/else```
 
@@ -28,10 +28,10 @@ This information is scraped from the tests/ directory.
 
 ## How to refresh the amazon.cloud collection
 
-Clone the original [``amazon.cloud collection``](https://github.com/ansible-collections/amazon.cloud) from GitHub:
+Fork the original [``amazon.cloud collection``](https://github.com/ansible-collections/amazon.cloud) repository to your account on GitHub. Clone the repository from your fork:
 ```
 mkdir -p ~/.ansible/collections/ansible_collections/amazon/cloud
-git clone https://github.com/ansible-collections/amazon.cloud ~/.ansible/collections/ansible_collections/amazon/cloud
+git clone https://github.com/YOUR_USER/amazon.cloud ~/.ansible/collections/ansible_collections/amazon/cloud
 ```
 
 Refresh the content of the modules moving in the repository path:
