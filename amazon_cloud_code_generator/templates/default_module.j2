@@ -11,7 +11,7 @@ from ansible_collections.amazon.cloud.plugins.module_utils.core import ansible_d
 def main():
 
     argument_spec = dict(
-        state=dict(type='str', choices=['create', 'update', 'delete', 'list', 'describe', 'get'], default='create'),
+       state=dict(type='str', choices=['present', 'absent', 'list', 'describe', 'get'], default='present'),
     )
     {{arguments}}
 
