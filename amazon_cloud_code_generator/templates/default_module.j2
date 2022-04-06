@@ -57,7 +57,7 @@ def main():
         results["result"] = cloud.get_resource(type_name, identifier)
 
     if state == "absent":
-        results["changed"] |= cloud.delete_resource(type_name, identifier)
+        results["changed"] |= cloud.absent(type_name, identifier)
 
     module.exit_json(**results)
 

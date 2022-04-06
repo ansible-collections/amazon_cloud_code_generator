@@ -52,7 +52,6 @@ from .utils import (
     snake_dict_to_camel_dict,
 )
 
-
 BOTO3_IMP_ERR = None
 try:
     import botocore
@@ -145,8 +144,8 @@ class CloudControlResource(object):
         """
         Returns existing resource operation requests using specific filters.
         """
-        results = []
-        response = {}
+        results: List = []
+        response: Dict = {}
 
         for i in count():
             # https://docs.aws.amazon.com/cloudcontrolapi/latest/APIReference/API_ListResourceRequests.html
@@ -172,7 +171,7 @@ class CloudControlResource(object):
 
     def get_resource(self, type_name: str, primary_identifier: str) -> List:
         # This is the "describe" equivalent for CCAPI
-        response = {}
+        response: Dict = {}
 
         try:
             response = self.client.get_resource(
@@ -186,7 +185,7 @@ class CloudControlResource(object):
         ) as e:
             self.module.fail_json_aws(e, msg="Failed to retrieve resource")
 
-        result = normalize_response(response)
+        result: List = normalize_response(response)
         return result
 
     def present(
@@ -258,34 +257,40 @@ class CloudControlResource(object):
                 for e in in_progress_requests:
                     self.wait_until_resource_request_success(e["RequestToken"])
 
-    def delete_resource(self, type_name: str, identifier: str) -> bool:
+    def absent(self, type_name: str, identifier: str):
         changed: bool = False
-
         try:
             response = self.client.get_resource(
                 TypeName=type_name, Identifier=identifier
             )
         except self.client.exceptions.ResourceNotFoundException:
             return changed
-
-        try:
-            if not self.module.check_mode:
-                self.check_in_progress_requests(type_name, identifier)
-
-                response = self.client.delete_resource(
-                    TypeName=type_name, Identifier=identifier
-                )
-
-                if self.module.params.get("wait"):
-                    self.wait_until_resource_request_success(
-                        response["ProgressEvent"]["RequestToken"]
-                    )
-            changed = True
         except (
             botocore.exceptions.BotoCoreError,
             botocore.exceptions.ClientError,
         ) as e:
-            self.module.fail_json_aws(e, msg="Failed to delete resource")
+            self.module.fail_json_aws(e, msg="Failed to retrieve resource")
+        else:
+            return self.delete_resource(type_name, identifier)
+
+    def delete_resource(self, type_name: str, identifier: str) -> bool:
+        changed: bool = True
+
+        if not self.module.check_mode:
+            try:
+                self.check_in_progress_requests(type_name, identifier)
+                response = self.client.delete_resource(
+                    TypeName=type_name, Identifier=identifier
+                )
+                if self.module.params.get("wait"):
+                    self.wait_until_resource_request_success(
+                        response["ProgressEvent"]["RequestToken"]
+                    )
+            except (
+                botocore.exceptions.BotoCoreError,
+                botocore.exceptions.ClientError,
+            ) as e:
+                self.module.fail_json_aws(e, msg="Failed to delete resource")
 
         return changed
 

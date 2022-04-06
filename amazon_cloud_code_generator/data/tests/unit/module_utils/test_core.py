@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, Mock
 import pytest
 
 from amazon_cloud_code_generator.module_utils.core import CloudControlResource
+from amazon_cloud_code_generator.module_utils.core import ansible_dict_to_boto3_tag_list
 
 
 @pytest.fixture
@@ -50,3 +51,52 @@ def test_present_updates_resource(ccr):
         PatchDocument='[{"op": "add", "path": "/Tags", "value": [{"Key": "k", "Value": "v"}]}]',
     )
     ccr.client.create_resource.assert_not_called()
+
+
+def test_absent_deletes_resource(ccr):
+    resource = {
+        "TypeName": "AWS::S3::Bucket",
+        "ResourceDescription": {
+            "Identifier": "test_bucket",
+            "Properties": '{"BucketName": "test_bucket"}',
+        },
+    }
+    ccr.client.get_resource.return_value = resource
+    changed = ccr.absent("AWS::S3::Bucket", "test_bucket")
+    assert changed
+    ccr.client.delete_resource.assert_called_with(
+        TypeName="AWS::S3::Bucket",
+        Identifier="test_bucket",
+    )
+    ccr.client.create_resource.assert_not_called()
+    ccr.client.update_resource.assert_not_called()
+
+
+def test_absent_deletes_resource_NotFound(ccr):
+    ccr.client.get_resource.side_effect = (
+        ccr.client.exceptions.ResourceNotFoundException()
+    )
+    changed = ccr.absent("AWS::S3::Bucket", "test_bucket")
+    assert changed is False
+    ccr.client.delete_resource.assert_not_called()
+    ccr.client.create_resource.assert_not_called()
+    ccr.client.update_resource.assert_not_called()
+
+
+def test__ansible_dict_to_boto3_tag_list():
+    tags_dict = {
+        "lowerCamel": "lowerCamelValue",
+        "UpperCamel": "upperCamelValue",
+        "Normal case": "Normal Value",
+        "lower case": "lower case value",
+    }
+    expected = [
+        {"Key": "lowerCamel", "Value": "lowerCamelValue"},
+        {"Key": "UpperCamel", "Value": "upperCamelValue"},
+        {"Key": "Normal case", "Value": "Normal Value"},
+        {"Key": "lower case", "Value": "lower case value"},
+    ]
+    converted_list = ansible_dict_to_boto3_tag_list(tags_dict)
+    sorted_converted_list = sorted(converted_list, key=lambda i: (i["Key"]))
+    sorted_list = sorted(expected, key=lambda i: (i["Key"]))
+    assert sorted_converted_list == sorted_list
