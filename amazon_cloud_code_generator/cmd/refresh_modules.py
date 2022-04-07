@@ -305,23 +305,19 @@ def main():
 
     for version in ["2.9", "2.10", "2.11", "2.12", "2.13", "2.14"]:
         per_version_ignore_content = ""
+        skip_list = []
 
-        skip_list = [
-            "compile-2.7!skip",  # Py3.6+
-            "compile-3.5!skip",  # Py3.6+
-            "import-2.7!skip",  # Py3.6+
-            "import-3.5!skip",  # Py3.6+
-            "future-import-boilerplate!skip",  # Py2 only
-            "metaclass-boilerplate!skip",  # Py2 only
-        ]
-
-        # No py26 tests with 2.13 and greater
-        if version in ["2.9", "2.10", "2.11", "2.12"]:
+        if version in ["2.9", "2.10", "2.11"]:
             skip_list += [
+                "compile-2.7!skip",  # Py3.6+
+                "compile-3.5!skip",  # Py3.6+
+                "import-2.7!skip",  # Py3.6+
+                "import-3.5!skip",  # Py3.6+
+                "future-import-boilerplate!skip",  # Py2 only
+                "metaclass-boilerplate!skip",  # Py2 only
                 "compile-2.6!skip",  # Py3.6+
                 "import-2.6!skip",  # Py3.6+
             ]
-
         no_validate_skip_needed = [
             "plugins/modules/logs_log_group.py",
             "plugins/modules/iam_role.py",
