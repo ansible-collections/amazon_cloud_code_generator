@@ -19,9 +19,8 @@ expected_content = resources("fixtures/expected_content.json")
 
 def test__gen_required_if():
     expected_required_if = [
-        ["state", "create", ["log_group_name"], True],
-        ["state", "update", ["log_group_name"], True],
-        ["state", "delete", ["log_group_name"], True],
+        ["state", "present", ["log_group_name"], True],
+        ["state", "absent", ["log_group_name"], True],
         ["state", "get", ["log_group_name"], True],
     ]
     schema = rm.generate_schema(json.dumps(raw_content))
