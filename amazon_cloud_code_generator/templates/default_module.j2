@@ -11,8 +11,7 @@ from ansible_collections.amazon.cloud.plugins.module_utils.core import ansible_d
 def main():
 
     argument_spec = dict(
-        client_token=dict(type='str', no_log=True),
-        state=dict(type='str', choices=['present', 'absent', 'list', 'describe', 'get'], default='present'),
+       state=dict(type='str', choices=['present', 'absent', 'list', 'describe', 'get'], default='present'),
     )
     {{arguments}}
 

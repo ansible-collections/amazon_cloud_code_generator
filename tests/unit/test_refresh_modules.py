@@ -125,8 +125,8 @@ author: Ansible Cloud Team (@ansible-collections)
 version_added: 1.0.0
 requirements: []
 extends_documentation_fragment:
-- amazon.aws.aws
-- amazon.aws.ec2
+- amazon.cloud.aws
+- amazon.cloud.ec2
 '''"""
 
     schema = rm.generate_schema(json.dumps(raw_content))

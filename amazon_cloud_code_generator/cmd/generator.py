@@ -12,6 +12,7 @@ from .utils import python_type
 from .utils import scrub_keys
 from .utils import camel_to_snake
 from .utils import get_module_from_config
+from .utils import ensure_description
 
 
 class Description:
@@ -208,6 +209,8 @@ class Documentation:
 
                 if "required" in v and isinstance(v["required"], list):
                     for r in v["required"]:
+                        if "default" in a_dict[k]["suboptions"][r]:
+                            continue
                         a_dict[k]["suboptions"][r]["required"] = True
                     a_dict[k].pop("required")
 
@@ -223,11 +226,29 @@ class Documentation:
             "maxLength",
             "minLength",
             "format",
+            "minimum",
+            "maximum",
         ]
         self.replace_keys(self.options, self.definitions)
         self.ensure_required(self.options)
         sanitized_options: Iterable = camel_to_snake(
             scrub_keys(self.options, list_of_keys_to_remove)
+        )
+
+        """
+        For all the options with a missing description field returned by the API
+        we make sure to add "description": "Not Provided." to allow
+        ansible-doc -t module amazon.cloud.module_name to succeed.
+
+        Without this workaround, sanity tests fail with (even if the ignore files
+        are populated with "validate-modules:invalid-documentation"):
+
+        >>> Standard Error
+        ERROR! Unable to retrieve documentation from 'amazon.cloud.module_name' due to:
+        All (sub-)options and return values must have a 'description' field
+        """
+        sanitized_options: Iterable = ensure_description(
+            sanitized_options, "description"
         )
 
         if self.required and all(self.required):
@@ -251,7 +272,7 @@ def generate_documentation(
         "options": {},
         "requirements": [],
         "version_added": added_ins["module"] or next_version,
-        "extends_documentation_fragment": ["amazon.aws.aws", "amazon.aws.ec2"],
+        "extends_documentation_fragment": ["amazon.cloud.aws", "amazon.cloud.ec2"],
     }
 
     docs = Documentation()
