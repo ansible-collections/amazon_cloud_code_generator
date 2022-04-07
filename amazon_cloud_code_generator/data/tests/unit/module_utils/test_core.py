@@ -3,8 +3,12 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
-from ansible_collections.amazon.cloud.plugins.module_utils.core import CloudControlResource
-from ansible_collections.amazon.cloud.plugins.module_utils.core import ansible_dict_to_boto3_tag_list
+from ansible_collections.amazon.cloud.plugins.module_utils.core import (
+    CloudControlResource,
+)
+from ansible_collections.amazon.cloud.plugins.module_utils.core import (
+    ansible_dict_to_boto3_tag_list,
+)
 
 
 @pytest.fixture
