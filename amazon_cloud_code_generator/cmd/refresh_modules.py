@@ -123,7 +123,7 @@ def gen_required_if(schema: Dict) -> List:
     primary_idenfifier = schema.get("primaryIdentifier")
     read_only_properties = schema.get("readOnlyProperties")
     required = schema.get("required", [])
-    states = ["delete", "get"]
+    states = ["absent", "get"]
     entries: List = []
 
     # Require primaryIdentifier only if not marked as a readOnlyProperty and further required properties

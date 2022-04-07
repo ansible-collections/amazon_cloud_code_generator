@@ -95,7 +95,7 @@ options:
         - get
         default: present
         description:
-        - Goal state for resouirce.
+        - Goal state for resource.
         - I(state=present) creates the resource if it doesn't exist, or updates to
             the provided state if the resource already exists.
         - I(state=absent) ensures an existing instance is deleted.
