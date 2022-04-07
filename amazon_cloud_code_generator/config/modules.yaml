@@ -1,7 +1,7 @@
 ---
 - s3_bucket:
     documentation:
-      short_description: Manage S3 buckets
+      short_description: Create and manage S3 buckets
       description: Create and manage S3 buckets (list, create, update, describe, delete).
 - logs_log_group:
     documentation:
@@ -9,5 +9,77 @@
       description: Create and manage log groups (list, create, update, describe, delete).
 - iam_role:
     documentation:
-      short_description: Create and manage EC2 instances
-      description: Manage EC2 instances (list, create, update, describe, delete).
+      short_description: Create and manage roles
+      description: Creates and manages new roles for your AWS account (list, create, update, describe, delete).
+- backup_backup_vault:
+    documentation:
+      short_description: Create and manage logical containers where backups are stored
+      description: Creates and manages logical containers where backups are stored (list, create, update, describe, delete).
+- backup_framework:
+    documentation:
+      short_description: Create and manage frameworks with one or more controls 
+      description: Creates and manages frameworks with one or more controls (list, create, update, describe, delete).
+- backup_report_plan:
+    documentation:
+      short_description: Create and manage report plans
+      description: Creates and manages report plans (list, create, update, describe, delete).
+- ec2_enclave_certificate_iam_role_association:
+- eks_addon:
+    documentation:
+      short_description: Create and manage Amazon EKS add-ons
+      description: Creates and manage Amazon EKS add-ons (list, create, update, describe, delete).
+- eks_cluster:
+    documentation:
+      short_description: Create and manages Amazon EKS control planes
+      description: Create and manage Amazon EKS control planes (list, create, update, describe, delete).  
+- eks_fargate_profile:
+    documentation:
+      short_description: Create and manages an AWS Fargate profiles
+      description: Create and manage an AWS Fargate profiles for Amazon EKS clusters (list, create, update, describe, delete).
+- lambda_code_signing_config:
+- lambda_event_source_mapping:
+- lambda_function:
+    documentation:
+      short_description: Create and manage Lambda functions
+      description: Creates and manage Lambda functions (list, create, update, describe, delete).
+- logs_query_definition:
+    documentation:
+      short_description: Create and manage query definitions
+      description: Creates and manage query definitions for CloudWatch Logs Insights (list, create, update, describe, delete).
+- logs_resource_policy:
+    documentation:
+      short_description: Create and manage resource policies
+      description: Creates and manage resource policies that allows other AWS services to put log events to the account (list, create, update, describe, delete).
+- rdsdb_proxy:
+    documentation:
+      short_description: Create and manage DB proxies
+      description: Creates and manage DB proxies (list, create, update, describe, delete).
+- redshift_cluster:
+    documentation:
+      short_description: Create and manage clusters
+      description: Creates and manage clusters (list, create, update, describe, delete).
+- redshift_event_subscription:
+    documentation:
+      short_description: Create and manage Amazon Redshift event notification subscriptions
+      description: Creates and manage Amazon Redshift event notification subscriptions (list, create, update, describe, delete).
+- route53_resolver_firewall_domain_list:
+- route53_resolver_firewall_rule_group:
+- route53_resolver_resolver_query_logging_config:
+- route53_resolver_resolver_query_logging_config_association:
+- s3_access_point:
+    documentation:
+      short_description: Create and manage Amazon S3 access points to use to access S3 buckets
+      description: Create and manage Amazon S3 access points to use to access S3 buckets (list, create, update, describe, delete).
+- s3_multi_region_access_point:
+    documentation:
+      short_description: Create and manage Amazon S3 Multi-Region Access Points
+      description: Create and manage Amazon S3 Multi-Region Access Points (list, create, update, describe, delete).
+- s3_multi_region_access_point_policy:
+- s3_storage_lens:
+- s3_object_lambda_access_point:
+- s3_object_lambda_access_point_policy:
+- wa_fv2_ip_set:
+- wa_fv2_regex_pattern_set:
+- wa_fv2_rule_group:
+- wa_fv2_web_acl:
+- wa_fv2_web_acl_association:
