@@ -1,66 +1,59 @@
-# amazon_cloud code generator
+# amazon_cloud_code_generator
 
-We use this repository to generate the ``amazon.cloud`` collection.
+`amazon_cloud_code_generator` generates the [``amazon.cloud collection``](https://github.com/ansible-collections/amazon.cloud) from the CloudFormation Resource Type Definition Schema or meta-schema.
 
 ## Requirements
 
-You need the following components on your system:
-
-- Python 3.6
-- tox
+The `amazon_cloud_code_generator` relies on the CloudFormation client. Hence, the following requirements must be met:
+- `boto3 >= 1.20.0`
+- `botocore >= 1.23.0`
+- `Python 3.9`
+- `tox`
 
 ## Usage
 
-To build the modules: `tox -e refresh_modules`.
+The [``amazon.cloud collection``](https://github.com/ansible-collections/amazon.cloud) modules are built using:
 
-The modules will be generated in `amazon_cloud` subdirectory by default. If
-you want to target a specific directory:
+```tox -e refresh_modules```
 
-- `tox -e refresh_modules --target-dir /somewhere/else`
+The modules will be generated in the `cloud` subdirectory by default. A different target directory can be specified by using:
 
-You can also generate the EXAMPLES section of the modules with the
-following command:
+```tox -e refresh_modules --target-dir /somewhere/else```
 
-- `tox -e refresh_examples --target-dir /somewhere/else`
+When available, the documented EXAMPLE block of the generated modules can be updated by using the following command:
 
-It will use the content of the tests/ directory to generate the examples.
+```tox -e refresh_examples --target-dir /somewhere/else```
 
-## How to refresh the amazon.cloud content
+This information is scraped from the tests/ directory.
 
-Install the original `amazon.cloud` collection from git:
+## How to refresh the amazon.cloud collection
 
-    mkdir -p ~/.ansible/collections/ansible_collections/amazon/cloud
-    git clone https://github.com/ansible-collections/amazon.cloud ~/.ansible/collections/ansible_collections/amazon/cloud
+Fork the original [``amazon.cloud collection``](https://github.com/ansible-collections/amazon.cloud) repository to your account on GitHub. Clone the repository from your fork:
+```
+mkdir -p ~/.ansible/collections/ansible_collections/amazon/cloud
+git clone https://github.com/YOUR_USER/amazon.cloud ~/.ansible/collections/ansible_collections/amazon/cloud
+```
 
-Refresh the content of the modules using this repository:
+Refresh the content of the modules moving in the repository path:
+```
+cd ~/.ansible/collections/ansible_collections/amazon/cloud
+tox -e refresh_modules
+```
+Format the Python code of the modules using the black formatter:
 
-    cd ~/.ansible/collections/ansible_collections/amazon/cloud
-    tox -e refresh_modules
+```tox -e black```
 
-Refresh the `RETURN` of the modules using the test-suite:
+Refresh the modules documentation localed in `~/.ansible/collections/ansible_collections/amazon/cloud/docs`.
 
-    mkdir -p ~/.ansible/collections/ansible_collections/goneri/utils
-    git clone https://github.com/goneri/ansible-collection-goneri.utils.git ~/.ansible/collections/ansible_collections/goneri/utils
-    cd ~/.ansible/collections/ansible_collections/amazon/cloud/tests/integration/targets/vcenter_vm_scenario1
-    ./refresh_RETURN_block.sh
-    cd ~/.ansible/collections/ansible_collections/goneri/utils
-    ./scripts/inject_RETURN.py ~/.ansible/collections/ansible_collections/amazon/cloud/manual/source/vmware_rest_scenarios/task_outputs ~/.ansible/collections/ansible_collections/vmware/vmware_rest --config-file config/inject_RETURN.yaml
+```tox -e add_docs```
 
-Reformat the Python code of the modules using the black formatter:
-
-    cd ~/.ansible/collections/ansible_collections/amazon/cloud
-    tox -e black
-
-Refresh the content of the documentation.
-
-    tox -e add_docs
-
-Run `ansible-test` to validate the result:
-
-    virtualenv -p python3.6 ~/tmp/venv-tmp-py36-vmware
-    source ~/tmp/venv-tmp-py36-vmware/bin/activate
-    pip install -r requirements.txt -r test-requirements.txt ansible
-    ansible-test sanity --requirements --local --python 3.6 -vvv
+Run `ansible-test` to validate the result using:
+```
+virtualenv -p python3.9 ~/tmp/venv-tmp-py39-aws
+source ~/tmp/venv-tmp-py39-aws/bin/activate
+pip install -r requirements.txt -r test-requirements.txt ansible
+ansible-test sanity --requirements --local --python 3.9 -vvv
+```
 
 ## Code of Conduct
 
