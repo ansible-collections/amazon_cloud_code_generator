@@ -47,12 +47,18 @@ Refresh the modules documentation localed in `~/.ansible/collections/ansible_col
 
 ```tox -e add_docs```
 
-Run `ansible-test` to validate the result using:
+Run `ansible-test` to validate the generated content using:
 ```
 virtualenv -p python3.9 ~/tmp/venv-tmp-py39-aws
 source ~/tmp/venv-tmp-py39-aws/bin/activate
 pip install -r requirements.txt -r test-requirements.txt ansible
 ansible-test sanity --requirements --local --python 3.9 -vvv
+```
+
+You can also execute all integration tests for the collection using:
+```
+ansible-test integration --requirements --docker
+
 ```
 
 ## Contributing
