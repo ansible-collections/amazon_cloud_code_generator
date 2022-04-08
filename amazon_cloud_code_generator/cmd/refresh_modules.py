@@ -120,20 +120,22 @@ def generate_params(definitions: Iterable) -> str:
 
 
 def gen_required_if(schema: Dict) -> List:
-    primary_idenfifier = schema.get("primaryIdentifier")
-    read_only_properties = schema.get("readOnlyProperties")
+    primary_idenfifier = schema.get("primaryIdentifier", [])
+    read_only_properties = schema.get("readOnlyProperties", {})
     required = schema.get("required", [])
     states = ["absent", "get"]
     entries: List = []
+    identifiers: List = []
 
     # Require primaryIdentifier only if not marked as a readOnlyProperty and further required properties
     # when state == 'present'
     if primary_idenfifier:
         for pr in primary_idenfifier:
             if pr not in read_only_properties:
-                entries.append(["state", "present", [pr, *required], True])
+                identifiers.append(pr)
+        entries.append(["state", "present", list(set([*identifiers, *required])), True])
 
-            [entries.append(["state", state, [pr], True]) for state in states]
+        [entries.append(["state", state, identifiers, True]) for state in states]
 
     return entries
 

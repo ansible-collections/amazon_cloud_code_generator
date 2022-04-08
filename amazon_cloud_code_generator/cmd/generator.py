@@ -209,9 +209,11 @@ class Documentation:
 
                 if "required" in v and isinstance(v["required"], list):
                     for r in v["required"]:
-                        if "default" in a_dict[k]["suboptions"][r]:
+    
+                        if "default" in a_dict[k]["suboptions"]:
                             continue
-                        a_dict[k]["suboptions"][r]["required"] = True
+                        if r in a_dict[k]["suboptions"]:
+                            a_dict[k]["suboptions"][r]["required"] = True
                     a_dict[k].pop("required")
 
             self.ensure_required(a_dict[k])
@@ -228,6 +230,7 @@ class Documentation:
             "format",
             "minimum",
             "maximum",
+            "patternProperties",
         ]
         self.replace_keys(self.options, self.definitions)
         self.ensure_required(self.options)
@@ -276,16 +279,16 @@ def generate_documentation(
     }
 
     docs = Documentation()
-    docs.options = module.schema.get("properties")
-    docs.definitions = module.schema.get("definitions")
+    docs.options = module.schema.get("properties", {})
+    docs.definitions = module.schema.get("definitions", {})
 
     # Properties defined as required must be specified in the desired state during resource creation
-    docs.required = module.schema.get("required")
+    docs.required = module.schema.get("required", [])
 
     # Properties defined as readOnlyProperties can't be set by users
-    docs.read_only_properties = module.schema.get("readOnlyProperties")
+    docs.read_only_properties = module.schema.get("readOnlyProperties", [])
 
-    docs.primary_identifier = module.schema.get("primaryIdentifier")
+    docs.primary_identifier = module.schema.get("primaryIdentifier", [])
 
     # Properties defined as writeOnlyProperties can be specified by users when creating or updating a
     # resource but can't be returned during a read or list requested
