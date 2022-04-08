@@ -48,6 +48,7 @@ class Description:
                 "DDThh",
                 "ARNs",
                 "VPCs",
+                "AWS::EFS::MountTarget",
             ]
         )
         ignored_values = set(["PUT", "S3"])
@@ -151,6 +152,18 @@ class Documentation:
                     options["choices"] = sorted(options.pop(key))
                 if key == "type":
                     options[key] = python_type(options[key])
+                if key == "oneOf":
+                    one_of = options.pop(key)
+                    to_be_updated: Dict = {}
+                    for elem in one_of:
+                        if "required" in elem:
+                            elem.pop("required")
+                        if "properties" in elem:
+                            to_be_updated.update(elem["properties"])
+                        else:
+                            to_be_updated.update(elem)
+                    options["suboptions"] = to_be_updated
+                    self.replace_keys(options["suboptions"], definitions)
             elif isinstance(item, dict):
                 if key == "properties":
                     options["suboptions"] = options.pop(key)
@@ -231,6 +244,8 @@ class Documentation:
             "minimum",
             "maximum",
             "patternProperties",
+            "maxItems",
+            "minItems",
         ]
         self.replace_keys(self.options, self.definitions)
         self.ensure_required(self.options)

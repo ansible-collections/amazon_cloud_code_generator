@@ -16,6 +16,7 @@ def python_type(value) -> str:
         "array": "list",
         "boolean": "bool",
         "integer": "int",
+        "number": "int",
         "object": "dict",
         "string": "str",
     }
