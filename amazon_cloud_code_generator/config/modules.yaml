@@ -14,7 +14,7 @@
 - backup_backup_vault:
     documentation:
       short_description: Create and manage logical containers where backups are stored
-      description: Creates and manages logical containers where backups are stored (list, create, update, describe, delete).
+      description: Creates and manages logical containers where backups are stored (create, update, describe, delete).
 - backup_framework:
     documentation:
       short_description: Create and manage frameworks with one or more controls 
@@ -23,21 +23,18 @@
     documentation:
       short_description: Create and manage report plans
       description: Creates and manages report plans (list, create, update, describe, delete).
-- ec2_enclave_certificate_iam_role_association:
-- eks_addon:
-    documentation:
-      short_description: Create and manage Amazon EKS add-ons
-      description: Creates and manage Amazon EKS add-ons (list, create, update, describe, delete).
 - eks_cluster:
     documentation:
       short_description: Create and manages Amazon EKS control planes
       description: Create and manage Amazon EKS control planes (list, create, update, describe, delete).  
-- eks_fargate_profile:
-    documentation:
-      short_description: Create and manages an AWS Fargate profiles
-      description: Create and manage an AWS Fargate profiles for Amazon EKS clusters (list, create, update, describe, delete).
 - lambda_code_signing_config:
+    documentation:
+      short_description: Code signing for AWS Lambda
+      description: Creates and manage code signing for AWS Lambda (list, create, update, describe, delete).
 - lambda_event_source_mapping:
+    documentation:
+      short_description: Create a mapping between an event source and an AWS Lambda function
+      description: Create a mapping between an event source and an AWS Lambda function (list, create, update, describe, delete).
 - lambda_function:
     documentation:
       short_description: Create and manage Lambda functions
@@ -62,10 +59,6 @@
     documentation:
       short_description: Create and manage Amazon Redshift event notification subscriptions
       description: Creates and manage Amazon Redshift event notification subscriptions (list, create, update, describe, delete).
-- route53_resolver_firewall_domain_list:
-- route53_resolver_firewall_rule_group:
-- route53_resolver_resolver_query_logging_config:
-- route53_resolver_resolver_query_logging_config_association:
 - s3_access_point:
     documentation:
       short_description: Create and manage Amazon S3 access points to use to access S3 buckets
@@ -75,11 +68,14 @@
       short_description: Create and manage Amazon S3 Multi-Region Access Points
       description: Create and manage Amazon S3 Multi-Region Access Points (list, create, update, describe, delete).
 - s3_multi_region_access_point_policy:
-- s3_storage_lens:
+    documentation:
+      short_description: Manage Amazon S3 access policies
+      description: Applie and manage Amazon S3 access policies to an Amazon S3 Multi-Region Access Points (list, create, update, describe, delete).
 - s3_object_lambda_access_point:
+    documentation:
+      short_description: Create and manage Object Lambda Access Points used to access S3 buckets
+      description: Create and manage Object Lambda Access Points used to access S3 buckets (list, create, update, describe, delete).
 - s3_object_lambda_access_point_policy:
-- wa_fv2_ip_set:
-- wa_fv2_regex_pattern_set:
-- wa_fv2_rule_group:
-- wa_fv2_web_acl:
-- wa_fv2_web_acl_association:
+    documentation:
+      short_description: Specifies the Object Lambda Access Point resource policy document
+      description: Create and manage Object Lambda Access Point resource policy document (create, update, describe, delete).
