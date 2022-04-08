@@ -209,7 +209,7 @@ class Documentation:
 
                 if "required" in v and isinstance(v["required"], list):
                     for r in v["required"]:
-    
+
                         if "default" in a_dict[k]["suboptions"]:
                             continue
                         if r in a_dict[k]["suboptions"]:
