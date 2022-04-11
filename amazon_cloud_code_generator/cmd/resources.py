@@ -23,7 +23,6 @@ RESOURCES = [
     "AWS::S3::Bucket",
     "AWS::S3::MultiRegionAccessPoint",
     "AWS::S3::MultiRegionAccessPointPolicy",
-    "AWS::S3::StorageLens",
     "AWS::S3ObjectLambda::AccessPoint",
     "AWS::S3ObjectLambda::AccessPointPolicy",
 ]

@@ -222,10 +222,9 @@ class Documentation:
 
                 if "required" in v and isinstance(v["required"], list):
                     for r in v["required"]:
-
-                        if "default" in a_dict[k]["suboptions"]:
-                            continue
                         if r in a_dict[k]["suboptions"]:
+                            if "default" in a_dict[k]["suboptions"][r]:
+                                continue
                             a_dict[k]["suboptions"][r]["required"] = True
                     a_dict[k].pop("required")
 

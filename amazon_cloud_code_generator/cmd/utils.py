@@ -4,8 +4,8 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 
-from ast import Tuple
 import re
+import copy
 import yaml
 import pkg_resources
 from typing import Dict, List
@@ -36,6 +36,24 @@ def scrub_keys(a_dict: Dict, list_of_keys_to_remove: List) -> Dict:
         )
         if k not in list_of_keys_to_remove
     }
+
+
+def ignore_description(a_dict: Dict):
+    """
+    Filter a_dict by removing description fields.
+    Handle when 'description' is a module suboption.
+    """
+    a_dict_copy = copy.copy(a_dict)
+    if not isinstance(a_dict, dict):
+        return a_dict
+
+    for k, v in a_dict_copy.items():
+        if k == "description":
+            if isinstance(v, dict):
+                ignore_description(v)
+            else:
+                a_dict.pop(k)
+        ignore_description(v)
 
 
 def ensure_description(element: Dict, *keys, default: str = "Not Provived."):

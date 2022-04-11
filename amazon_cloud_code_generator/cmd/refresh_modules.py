@@ -14,6 +14,7 @@ import yaml
 import jinja2
 import json
 import traceback
+import copy
 
 BOTO3_IMP_ERR = None
 try:
@@ -31,7 +32,7 @@ from .generator import CloudFormationWrapper
 from .generator import generate_documentation
 from .utils import get_module_from_config
 from .utils import camel_to_snake
-from .utils import scrub_keys
+from .utils import ignore_description
 
 
 def run_git(git_dir: str, *args):
@@ -182,12 +183,15 @@ def format_documentation(documentation: Iterable) -> str:
 
 
 def generate_argument_spec(options: Dict) -> str:
-    list_of_keys_to_remove = ["description"]
     argument_spec: str = ""
+    options_copy = copy.deepcopy(options)
 
-    for key in options.keys():
+    for key in options_copy.keys():
+        ignore_description(options_copy[key])
+
+    for key in options_copy.keys():
         argument_spec += f"\nargument_spec['{key}'] = "
-        argument_spec += str(scrub_keys(options[key], list_of_keys_to_remove))
+        argument_spec += str(options_copy[key])
 
     argument_spec = argument_spec.replace("suboptions", "options")
 
@@ -320,9 +324,15 @@ def main():
                 "compile-2.6!skip",  # Py3.6+
                 "import-2.6!skip",  # Py3.6+
             ]
-        no_validate_skip_needed = [
-            "plugins/modules/logs_log_group.py",
-            "plugins/modules/iam_role.py",
+        validate_skip_needed = [
+            "plugins/modules/s3_bucket.py",
+            "plugins/modules/backup_backup_vault.py",
+            "plugins/modules/backup_framework.py",
+            "plugins/modules/backup_report_plan.py",
+            "plugins/modules/lambda_function.py",
+            "plugins/modules/rdsdb_proxy.py",
+            "plugins/modules/redshift_cluster.py",
+            "plugins/modules/eks_cluster.py",
         ]
 
         for f in module_utils:
@@ -333,7 +343,7 @@ def main():
             for skip in skip_list:
                 per_version_ignore_content += f"{f} {skip}\n"
 
-            if f not in no_validate_skip_needed:
+            if f in validate_skip_needed:
                 if version in ["2.10", "2.11", "2.12", "2.13", "2.14"]:
                     validate_skip_list = [
                         "validate-modules:no-log-needed",
