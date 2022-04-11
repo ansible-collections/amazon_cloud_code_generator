@@ -47,13 +47,28 @@ Refresh the modules documentation localed in `~/.ansible/collections/ansible_col
 
 ```tox -e add_docs```
 
-Run `ansible-test` to validate the result using:
+Run `ansible-test` to validate the generated content using:
 ```
 virtualenv -p python3.9 ~/tmp/venv-tmp-py39-aws
 source ~/tmp/venv-tmp-py39-aws/bin/activate
 pip install -r requirements.txt -r test-requirements.txt ansible
 ansible-test sanity --requirements --local --python 3.9 -vvv
 ```
+
+You can also execute all integration tests for the collection using:
+```
+ansible-test integration --requirements --docker
+
+```
+
+## Contributing
+We welcome community contributions and if you find problems, please open an issue or create a Pull Request. You can also join us in the:
+    - `#ansible-aws` [irc.libera.chat](https://libera.chat/) channel
+    - `#ansible` (general use questions and support), `#ansible-community` (community and collection development questions), and other [IRC channels](https://docs.ansible.com/ansible/devel/community/communication.html#irc-channels).
+
+The Amazon Web Services Working groups is holding a monthly community meeting at `#ansible-aws` IRC channel at 17:30 UTC every fourth Thursday of the month. If you have something to discuss (e.g. a PR that needs help), add your request to the [meeting agenda](https://github.com/ansible/community/issues/654) and join the IRC `#ansible-aws` channel. Invite (import by URL): [ics file](https://raw.githubusercontent.com/ansible/community/main/meetings/ical/aws.ics)
+
+You don't know how to start? Refer to our [contribution guide](CONTRIBUTING.md)!
 
 ## Code of Conduct
 
