@@ -220,12 +220,10 @@ class Documentation:
                     a_dict[k] = dict(a_dict_copy[k], **a_dict[k].pop("items"))
                     v = a_dict[k]
 
+                if camel_to_snake(k) in self.primary_identifier:
+                    a_dict[k]["required"] = True
+
                 if "required" in v and isinstance(v["required"], list):
-                    for r in v["required"]:
-                        if r in a_dict[k]["suboptions"]:
-                            if "default" in a_dict[k]["suboptions"][r]:
-                                continue
-                            a_dict[k]["suboptions"][r]["required"] = True
                     a_dict[k].pop("required")
 
             self.ensure_required(a_dict[k])
@@ -267,10 +265,6 @@ class Documentation:
         sanitized_options: Iterable = ensure_description(
             sanitized_options, "description"
         )
-
-        if self.required and all(self.required):
-            for r in self.required:
-                sanitized_options[r]["required"] = True
 
         return sanitized_options
 

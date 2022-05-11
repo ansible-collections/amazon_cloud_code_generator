@@ -78,4 +78,5 @@
 - s3_object_lambda_access_point_policy:
     documentation:
       short_description: Specifies the Object Lambda Access Point resource policy document
-      description: Create and manage Object Lambda Access Point resource policy document.
+      description: Create and manage Object Lambda Access Point resource policy document (create, update, describe, delete).
+- eks_fargate_profile:

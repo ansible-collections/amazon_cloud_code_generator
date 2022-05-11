@@ -124,21 +124,17 @@ def generate_params(definitions: Iterable) -> str:
 
 def gen_required_if(schema: Dict) -> List:
     primary_idenfifier = schema.get("primaryIdentifier", [])
-    read_only_properties = schema.get("readOnlyProperties", {})
     required = schema.get("required", [])
-    states = ["absent", "get"]
     entries: List = []
-    identifiers: List = []
 
-    # Require primaryIdentifier only if not marked as a readOnlyProperty and further required properties
-    # when state == 'present'
-    if primary_idenfifier:
-        for pr in primary_idenfifier:
-            if pr not in read_only_properties:
-                identifiers.append(pr)
-        entries.append(["state", "present", list(set([*identifiers, *required])), True])
-
-        [entries.append(["state", state, identifiers, True]) for state in states]
+    entries.append(
+        [
+            "state",
+            "present",
+            [item for item in required if item not in primary_idenfifier],
+            True,
+        ]
+    )
 
     return entries
 
@@ -221,7 +217,14 @@ def generate_schema(raw_content) -> Dict:
 
     for key, value in schema.items():
         if isinstance(value, list):
-            schema[key] = [camel_to_snake(p.split("/")[-1].strip()) for p in value]
+            elems = []
+            for v in value:
+                if isinstance(v, list):
+                    elems.extend([camel_to_snake(p.split("/")[-1].strip()) for p in v])
+                else:
+                    elems.append(camel_to_snake(v.split("/")[-1].strip()))
+
+            schema[key] = elems
 
     return schema
 
