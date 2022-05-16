@@ -330,10 +330,18 @@ def generate_documentation(
             },
             "wait_timeout": {
                 "description": [
-                    "How many seconds to wait for an operation to complete before timing out."
+                    "How many seconds to wait for an operation to complete before timing out.",
                 ],
                 "type": "int",
                 "default": 320,
+            },
+            "force": {
+                "description": [
+                    "Cancel IN_PROGRESS and PENDING resource requestes.",
+                    "Because you can only perform a single operation on a given resource at a time, there might be cases where you need to cancel the current resource operation to make the resource available so that another operation may be performed on it.",
+                ],
+                "type": "bol",
+                "default": False,
             },
         }
     )
