@@ -50,6 +50,15 @@ module: logs_log_group
 short_description: Create and manage log groups
 description: Create and manage log groups (list, create, update, describe, delete).
 options:
+    force:
+        default: false
+        description:
+        - Cancel IN_PROGRESS and PENDING resource requestes.
+        - Because you can only perform a single operation on a given resource at a
+            time, there might be cases where you need to cancel the current resource
+            operation to make the resource available so that another operation may
+            be performed on it.
+        type: bool
     kms_key_id:
         description:
         - The Amazon Resource Name (ARN) of the CMK to use when encrypting log data.
@@ -124,12 +133,6 @@ options:
         description:
         - How many seconds to wait for an operation to complete before timing out.
         type: int
-    force:
-        default: False
-        description":
-        - Cancel IN_PROGRESS and PENDING resource requestes.
-        - Because you can only perform a single operation on a given resource at a time, there might be cases where you need to cancel the current resource operation to make the resource available so that another operation may be performed on it.
-        type: bool
 author: Ansible Cloud Team (@ansible-collections)
 version_added: 1.0.0
 requirements: []
