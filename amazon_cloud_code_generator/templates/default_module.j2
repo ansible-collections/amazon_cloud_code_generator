@@ -40,19 +40,26 @@ def main():
     # Ignore createOnlyProperties that can be set only during resource creation
     create_only_params = {{create_only_properties}}
 
+    # Necessary to handle when module does not support all the states
+    handlers = {{handlers}}
+
     state = module.params.get('state')
     identifier = module.params.get('{{primary_identifier}}')
 
     results = {"changed": False, "result": []}
-    
+
     if state == "list":
+        if "list" not in handlers:
+            module.exit_json(**results, msg=f"Resource type {type_name} cannot be listed.")
         results["result"] = cloud.list_resources(type_name)
-    
+
     if state in ("describe", "get"):
+        if "read" not in handlers:
+            module.exit_json(**results, msg=f"Resource type {type_name} cannot be read.")
         results["result"] = cloud.get_resource(type_name, identifier)
 
     if state == "present":
-        results["changed"] |= cloud.present(type_name, identifier, params_to_set, create_only_params)
+        results["changed"] |= cloud.present(type_name, identifier, params_to_set, create_only_params, handlers)
         results["result"] = cloud.get_resource(type_name, identifier)
 
     if state == "absent":
