@@ -323,7 +323,7 @@ class CloudControlResource(object):
 
         if patch:
             if "update" not in handlers:
-                results = {"changed": False, "result": []}
+                results = {"changed": False, "result": {}}
                 self.module.exit_json(
                     **results, msg=f"Resource type {type_name} cannot be updated."
                 )
