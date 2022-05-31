@@ -30,7 +30,7 @@
 
     - assert:
         that:
-          - output.result[0].identifier == log_group_name
+          - output.result.identifier == log_group_name
 
     - name: Create log group (idempotence)
       logs_log_group:
@@ -64,8 +64,8 @@
     - assert:
         that:
           - output is changed
-          - "'testkey' in output.result[0].properties.tags"
-          - "'anotherkey' in output.result[0].properties.tags"
+          - "'testkey' in output.result.properties.tags"
+          - "'anotherkey' in output.result.properties.tags"
 
     - name: Update log group (idempotence)
       logs_log_group:

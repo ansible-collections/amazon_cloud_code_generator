@@ -186,6 +186,7 @@ class CloudControlResource(object):
             self.module.fail_json_aws(e, msg="Failed to retrieve resource")
 
         result: List = normalize_response(response)
+
         return result
 
     def present(
@@ -259,6 +260,9 @@ class CloudControlResource(object):
 
             if in_progress_requests:
                 if self.module.params.get("force"):
+                    self.module.warn(
+                        f"There is one or more IN PROGRESS or PENDING resource requests on {identifier} that will be cancelled."
+                    )
                     try:
                         for e in in_progress_requests:
                             self.client.cancel_resource_request(
@@ -273,7 +277,7 @@ class CloudControlResource(object):
                         )
                 else:
                     self.module.warn(
-                        f"There is one or more IN PROGRESS operations on {identifier}. Wait until there are no more IN PROGRESS operations before proceding."
+                        f"There is one or more IN PROGRESS resource requests on {identifier}. Wait until there are no more IN PROGRESS resource requests before proceding."
                     )
                     for e in in_progress_requests:
                         self.wait_until_resource_request_success(e["RequestToken"])
