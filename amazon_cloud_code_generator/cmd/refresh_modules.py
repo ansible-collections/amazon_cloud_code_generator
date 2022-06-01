@@ -212,6 +212,7 @@ class Schema(TypedDict):
     readOnlyProperties: Optional[List]
     createOnlyProperties: Optional[List]
     taggable: Optional[bool]
+    handlers: Optional[Dict]
 
 
 def generate_schema(raw_content) -> Dict:
@@ -268,7 +269,8 @@ class AnsibleModule:
             params=indent(generate_params(documentation["options"]), 4),
             primary_identifier=self.schema["primaryIdentifier"][0],
             required_if=required_if,
-            create_only_properties=self.schema.get("createOnlyProperties"),
+            create_only_properties=self.schema.get("createOnlyProperties", {}),
+            handlers=self.schema.get("handlers", {}),
         )
 
         self.write_module(target_dir, content)

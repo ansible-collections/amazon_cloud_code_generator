@@ -194,14 +194,14 @@ class CloudControlResource(object):
         type_name: str,
         identifier: str,
         params: Dict,
-        create_only_params: Optional[List] = None,
+        create_only_params: List,
+        handlers: Dict,
     ) -> bool:
-        create_only_params = create_only_params or []
         try:
             resource = self.client.get_resource(
                 TypeName=type_name, Identifier=identifier
             )
-            return self.update_resource(resource, params, create_only_params)
+            return self.update_resource(resource, params, create_only_params, handlers)
         except self.client.exceptions.ResourceNotFoundException:
             return self.create_resource(type_name, identifier, params)
         except (
@@ -324,6 +324,7 @@ class CloudControlResource(object):
         resource: Dict,
         params_to_set: Dict,
         create_only_params: List,
+        handlers: Dict,
     ) -> bool:
         identifier = resource["ResourceDescription"]["Identifier"]
         type_name = resource["TypeName"]
@@ -346,6 +347,11 @@ class CloudControlResource(object):
                 patch.append(make_op(k, properties[k], v, strategy))
 
         if patch:
+            if "update" not in handlers:
+                results = {"changed": False, "result": {}}
+                self.module.exit_json(
+                    **results, msg=f"Resource type {type_name} cannot be updated."
+                )
             try:
                 if not self.module.check_mode:
                     self.check_in_progress_requests(type_name, identifier)
