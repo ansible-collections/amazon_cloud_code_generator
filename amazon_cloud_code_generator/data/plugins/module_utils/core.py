@@ -51,7 +51,9 @@ from .utils import (
     ansible_dict_to_boto3_tag_list,
     snake_dict_to_camel_dict,
     diff_dicts,
+    snake_to_camel,
 )
+
 
 BOTO3_IMP_ERR = None
 try:
@@ -170,13 +172,17 @@ class CloudControlResource(object):
     def get_resources_async(self, type_name, identifier):
         return self.get_resource(type_name, identifier)
 
-    def get_resource(self, type_name: str, primary_identifier: str) -> List:
+    def get_resource(self, type_name: str, primary_identifier: List[str]) -> List:
         # This is the "describe" equivalent for CCAPI
         response: Dict = {}
+        identifier: Dict = []
+        
+        for id in primary_identifier:
+            identifier[snake_to_camel(id, capitalize_first=True)] = self.module.params.get(id)
 
         try:
             response = self.client.get_resource(
-                TypeName=type_name, Identifier=primary_identifier
+                TypeName=type_name, Identifier=json.dumps(identifier)
             )
         except self.client.exceptions.ResourceNotFoundException:
             return response
@@ -193,21 +199,27 @@ class CloudControlResource(object):
     def present(
         self,
         type_name: str,
-        identifier: str,
+        primary_identifier: List,
         params: Dict,
         create_only_params: List,
         handlers: Dict,
     ) -> bool:
         results = {"changed": False, "result": {}}
+        create_only_params = create_only_params or []
+        identifier: Dict = []
+        
+        for id in primary_identifier:
+            identifier[snake_to_camel(id, capitalize_first=True)] = self.module.params.get(id)
+
         try:
             resource = self.client.get_resource(
-                TypeName=type_name, Identifier=identifier
+                TypeName=type_name, Identifier=json.dumps(identifier)
             )
             results = self.update_resource(
                 resource, params, create_only_params, handlers
             )
         except self.client.exceptions.ResourceNotFoundException:
-            results["changed"] |= self.create_resource(type_name, identifier, params)
+            results["changed"] |= self.create_resource(type_name, params)
         except (
             botocore.exceptions.BotoCoreError,
             botocore.exceptions.ClientError,
@@ -218,7 +230,7 @@ class CloudControlResource(object):
 
         return results
 
-    def create_resource(self, type_name: str, identifier: str, params: Dict) -> bool:
+    def create_resource(self, type_name: str, params: Dict) -> bool:
         changed: bool = False
         params = json.dumps(params)
 
@@ -230,6 +242,9 @@ class CloudControlResource(object):
                 self.wait_until_resource_request_success(
                     response["ProgressEvent"]["RequestToken"]
                 )
+            except botocore.exceptions.InvalidRequest as e:
+                msg = response["ProgressEvent"]["StatusMessage"]
+                self.module.fail_json_aws(e, msg=msg)
             except (
                 botocore.exceptions.BotoCoreError,
                 botocore.exceptions.ClientError,
@@ -290,11 +305,16 @@ class CloudControlResource(object):
                     for e in in_progress_requests:
                         self.wait_until_resource_request_success(e["RequestToken"])
 
-    def absent(self, type_name: str, identifier: str):
+    def absent(self, type_name: str, primary_identifier: List):
         changed: bool = False
+        identifier: List = []
+
+        for id in primary_identifier:
+            identifier[snake_to_camel(id, capitalize_first=True)] = self.module.params.get(id)
+
         try:
             response = self.client.get_resource(
-                TypeName=type_name, Identifier=identifier
+                TypeName=type_name, Identifier=json.dumps(identifier)
             )
         except self.client.exceptions.ResourceNotFoundException:
             return changed
@@ -304,7 +324,7 @@ class CloudControlResource(object):
         ) as e:
             self.module.fail_json_aws(e, msg="Failed to retrieve resource")
         else:
-            return self.delete_resource(type_name, identifier)
+            return self.delete_resource(type_name, json.dumps(identifier))
 
     def delete_resource(self, type_name: str, identifier: str) -> bool:
         changed: bool = True

@@ -6,7 +6,10 @@ eks_fargate_profile_name_a: "{{ _resource_prefix }}-fp-a"
 eks_fargate_profile_name_b: "{{ _resource_prefix }}-fp-b"
 
 selectors:
-  - namespace: "fp-default"
+  - labels:
+    - key: "test"
+      value: "test"  
+    namespace: "fp-default"
 
 tags:
   Foo: foo

@@ -260,6 +260,7 @@ class AnsibleModule:
             added_ins,
             next_version,
         )
+
         arguments = generate_argument_spec(documentation["options"])
         documentation_to_string = format_documentation(documentation)
         required_if = gen_required_if(self.schema)
@@ -270,7 +271,7 @@ class AnsibleModule:
             name=self.name,
             resource_type=f"'{self.schema.get('typeName')}'",
             params=indent(generate_params(documentation["options"]), 4),
-            primary_identifier=self.schema["primaryIdentifier"][0],
+            primary_identifier=self.schema["primaryIdentifier"],
             required_if=required_if,
             create_only_properties=self.schema.get("createOnlyProperties", {}),
             handlers=self.schema.get("handlers", {}),
