@@ -1,5 +1,6 @@
 ---
-_resource_prefix: "ansible-test-{{ tiny_prefix }}"
+#_resource_prefix: "ansible-test-{{ tiny_prefix }}"
+_resource_prefix: "ansible-test-ccapi"
 
 eks_cluster_name: "{{ _resource_prefix }}-cluster"
 eks_fargate_profile_name_a: "{{ _resource_prefix }}-fp-a"

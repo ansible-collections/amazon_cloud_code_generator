@@ -126,15 +126,19 @@ def gen_required_if(schema: Dict) -> List:
     primary_idenfifier = schema.get("primaryIdentifier", [])
     required = schema.get("required", [])
     entries: List = []
+    states = ["absent", "get"]
 
     entries.append(
-        [
-            "state",
-            "present",
-            [item for item in required if item not in primary_idenfifier],
-            True,
-        ]
+        ["state", "present", list(set([*primary_idenfifier, *required])), True]
     )
+    [
+        entries.append(["state", state, list(set(primary_idenfifier)), True])
+        for state in states
+    ]
+    # For compound primary identifiers consisting of multiple resource properties strung together,
+    # use the property values in the order that they are specified in the primary identifier definition
+    if len(primary_idenfifier) > 1:
+        entries.append(["state", "list", list(set(primary_idenfifier[:-1])), True])
 
     return entries
 

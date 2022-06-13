@@ -10,11 +10,28 @@
     state: absent
   ignore_errors: true
 
+- name: Delete a fargate profile b 
+  amazon.cloud.eks_fargate_profile:
+    fargate_profile_name: "{{ eks_fargate_profile_name_b }}"
+    cluster_name: "{{ eks_cluster_name }}"
+    state: absent
+    wait: true
+  ignore_errors: true
+
+- name: Delete a fargate profile a
+  amazon.cloud.eks_fargate_profile:
+    fargate_profile_name: "{{ eks_fargate_profile_name_a }}"
+    cluster_name: "{{ eks_cluster_name }}"
+    state: absent
+    wait: true
+  ignore_errors: true
+
 - name: Remove EKS cluster
   amazon.cloud.eks_cluster:
     name: '{{ eks_cluster_name }}'
     state: absent
     wait: true
+    wait_timeout: 900
   ignore_errors: true
 
 - name: Create list of all additional EKS security groups
@@ -82,20 +99,4 @@
     cidr_block: 10.0.0.0/16
     state: absent
     name: "{{ _resource_prefix }}-vpc"
-  ignore_errors: true
-
-- name: Delete a fargate profile b 
-  amazon.cloud.eks_fargate_profile:
-    fargate_profile_name: "{{ eks_fargate_profile_name_b }}"
-    cluster_name: "{{ eks_cluster_name }}"
-    state: absent
-    wait: true
-  ignore_errors: true
-
-- name: Delete a fargate profile a
-  amazon.cloud.eks_fargate_profile:
-    fargate_profile_name: "{{ eks_fargate_profile_name_a }}"
-    cluster_name: "{{ eks_cluster_name }}"
-    state: absent
-    wait: true
   ignore_errors: true

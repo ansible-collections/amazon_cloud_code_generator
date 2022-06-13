@@ -110,3 +110,8 @@
     name: "{{ eks_cluster_name }}"
     state: describe
   register: _result_get_cluster
+
+- name: List eks clusters
+  amazon.cloud.eks_cluster:
+    state: list
+  register: _result_list_clusters

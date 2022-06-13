@@ -78,9 +78,11 @@ def camel_to_snake(name: str, reversible: bool = False) -> str:
 
 def snake_to_camel(snake, capitalize_first=False):
     if capitalize_first:
-        return ''.join(x.capitalize() or '_' for x in snake.split('_'))
+        return "".join(x.capitalize() or "_" for x in snake.split("_"))
     else:
-        return snake.split('_')[0] + ''.join(x.capitalize() or '_' for x in snake.split('_')[1:])
+        return snake.split("_")[0] + "".join(
+            x.capitalize() or "_" for x in snake.split("_")[1:]
+        )
 
 
 def scrub_keys(a_dict: Dict, list_of_keys_to_remove: List[str]) -> Dict:
