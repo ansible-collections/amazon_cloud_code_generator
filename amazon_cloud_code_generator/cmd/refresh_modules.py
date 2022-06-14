@@ -278,7 +278,7 @@ class AnsibleModule:
             primary_identifier=self.schema["primaryIdentifier"],
             required_if=required_if,
             create_only_properties=self.schema.get("createOnlyProperties", {}),
-            handlers=self.schema.get("handlers", {}),
+            handlers=list(self.schema.get("handlers", {}).keys()),
         )
 
         self.write_module(target_dir, content)

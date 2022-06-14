@@ -1,4 +1,4 @@
-# # This code is part of Ansible, but is an independent component.
+# This code is part of Ansible, but is an independent component.
 # This particular file snippet, and this file snippet only, is BSD licensed.
 # Modules you write using this snippet, which is embedded dynamically by Ansible
 # still belong to the author of the module, and may assign their own license
@@ -303,7 +303,18 @@ class CloudControlResource(object):
                     response,
                 )
             )
-            return in_progress_requests
+        return in_progress_requests
+
+    def wait_for_in_progress_requests(
+        self, in_progress_requests: List, identifier: str
+    ):
+        self.module.warn(
+            f"There is one or more IN PROGRESS operations on {identifier}. Wait until there are no more IN PROGRESS operations before proceding."
+        )
+        [
+            self.wait_until_resource_request_success(e["RequestToken"])
+            for e in in_progress_requests
+        ]
 
     def absent(self, type_name: str, primary_identifier: List):
         changed: bool = False
@@ -333,24 +344,39 @@ class CloudControlResource(object):
 
     def delete_resource(self, type_name: str, identifier: str) -> bool:
         changed: bool = True
+        in_progress_requests: List = []
 
-        if not self.module.check_mode:
-            self.check_in_progress_requests(type_name, identifier)
+        in_progress_requests = self.check_in_progress_requests(type_name, identifier)
+        # There is already a delete operation IN PROGRESS
+        if any(
+            filter(
+                lambda d: d["Operation"] == "DELETE",
+                in_progress_requests,
+            )
+        ):
+            changed = False
 
-            try:
-                response = self.client.delete_resource(
-                    TypeName=type_name, Identifier=identifier
-                )
-            except (
-                botocore.exceptions.BotoCoreError,
-                botocore.exceptions.ClientError,
-            ) as e:
-                self.module.fail_json_aws(e, msg="Failed to delete resource")
+        if self.module.check_mode:
+            return changed
 
-            if self.module.params.get("wait"):
-                self.wait_until_resource_request_success(
-                    response["ProgressEvent"]["RequestToken"]
-                )
+        self.wait_for_in_progress_requests(in_progress_requests, identifier)
+        try:
+            response = self.client.delete_resource(
+                TypeName=type_name, Identifier=identifier
+            )
+        except self.client.exceptions.ResourceNotFoundException:
+            # If the resource has been deleted by an IN PROGRESS delete operation
+            return changed
+        except (
+            botocore.exceptions.BotoCoreError,
+            botocore.exceptions.ClientError,
+        ) as e:
+            self.module.fail_json_aws(e, msg="Failed to delete resource")
+
+        if self.module.params.get("wait"):
+            self.wait_until_resource_request_success(
+                response["ProgressEvent"]["RequestToken"]
+            )
 
         return changed
 
@@ -435,6 +461,7 @@ class CloudControlResource(object):
                     self.wait_until_resource_request_success(
                         response["ProgressEvent"]["RequestToken"]
                     )
+            changed = True
 
         if self.module._diff:
             match, diffs = diff_dicts(

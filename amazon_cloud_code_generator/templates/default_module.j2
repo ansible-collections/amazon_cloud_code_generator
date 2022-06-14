@@ -51,7 +51,7 @@ def main():
     if state == "list":
         if "list" not in handlers:
             module.exit_json(**results, msg=f"Resource type {type_name} cannot be listed.")
-        results["result"] = cloud.list_resources(type_name)
+        results["result"] = cloud.list_resources(type_name, identifier)
 
     if state in ("describe", "get"):
         if "read" not in handlers:
