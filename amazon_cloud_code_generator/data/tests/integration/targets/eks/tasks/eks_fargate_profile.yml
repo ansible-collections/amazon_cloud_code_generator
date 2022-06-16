@@ -31,7 +31,7 @@
   pause:
     seconds: 10
 
-- name: Attempt to create Fargate Profile a in non existent eks
+- name: Attempt to create Fargate Profile a in non existent EKS
   amazon.cloud.eks_fargate_profile:
     fargate_profile_name: '{{ eks_fargate_profile_name_a }}'
     state: present

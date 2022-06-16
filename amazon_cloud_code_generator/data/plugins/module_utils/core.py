@@ -29,7 +29,7 @@
 This module_utility adds shared support for AWS Cloud Control API modules.
 """
 
-from __future__ import absolute_import, division, print_function, annotations
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
@@ -37,7 +37,7 @@ __metaclass__ = type
 import json
 import traceback
 from itertools import count
-from typing import Iterable, List, Dict, Optional
+from typing import Iterable, List, Dict, Optional, Union
 
 from ansible_collections.amazon.aws.plugins.module_utils.ec2 import AWSRetry
 from .utils import (
@@ -101,7 +101,7 @@ class CloudControlResource(object):
 
     @to_sync
     async def list_resources(
-        self, type_name: str, identifiers: Optional[List] = []
+        self, type_name: str, identifiers: Optional[List] = None
     ) -> List:
         """
         An exception occurred during task execution. To see the full traceback, use -vvv.
@@ -189,7 +189,9 @@ class CloudControlResource(object):
     def get_resources_async(self, type_name, identifier):
         return self.get_resource(type_name, identifier)
 
-    def get_resource(self, type_name: str, primary_identifier: str | List) -> List:
+    def get_resource(
+        self, type_name: str, primary_identifier: Union[str, List]
+    ) -> List:
         # This is the "describe" equivalent for CCAPI
         response: Dict = {}
         identifier: Dict = {}

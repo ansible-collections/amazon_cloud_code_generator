@@ -70,7 +70,7 @@
         nat_gateway_id: "{{ _result_create_nat_gateway.nat_gateway_id }}"
   register: _result_create_nat_route_table
 
-- name: Create security groups to use for eks cluster
+- name: Create security groups to use for EKS cluster
   ec2_group:
     name: '{{ item.name }}'
     description: '{{ item.description }}'
@@ -84,7 +84,7 @@
 - debug:
     msg: "{{ _result_create_security_groups }}"
 
-- name: Create eks cluster
+- name: Create EKS cluster
   amazon.cloud.eks_cluster:
     name: "{{ eks_cluster_name }}"
     resources_vpc_config:
@@ -100,18 +100,18 @@
     wait_timeout: 900
   register: _result_create_cluster
 
-- name: Check that eks cluster was created
+- name: Check that EKS cluster was created
   assert:
      that:
       - _result_create_cluster.result[0].identifier == eks_cluster_name
 
-- name: Describe eks cluster
+- name: Describe EKS cluster
   amazon.cloud.eks_cluster:
     name: "{{ eks_cluster_name }}"
     state: describe
   register: _result_get_cluster
 
-- name: List eks clusters
+- name: List EKS clusters
   amazon.cloud.eks_cluster:
     state: list
   register: _result_list_clusters

@@ -10,7 +10,7 @@
     state: absent
   ignore_errors: true
 
-- name: Delete a fargate profile b 
+- name: Delete a Fargate Profile b 
   amazon.cloud.eks_fargate_profile:
     fargate_profile_name: "{{ eks_fargate_profile_name_b }}"
     cluster_name: "{{ eks_cluster_name }}"
@@ -18,7 +18,7 @@
     wait: true
   ignore_errors: true
 
-- name: Delete a fargate profile a
+- name: Delete a Fargate Profile a
   amazon.cloud.eks_fargate_profile:
     fargate_profile_name: "{{ eks_fargate_profile_name_a }}"
     cluster_name: "{{ eks_cluster_name }}"
@@ -60,7 +60,7 @@
   with_items: '{{ eks_security_groups | reverse | list + additional_eks_sg }}'
   ignore_errors: true
 
-- name: Remove Route Tables
+- name: Remove route tables
   ec2_vpc_route_table:
     state: absent
     vpc_id: '{{ _result_create_vpc.vpc.id }}'
