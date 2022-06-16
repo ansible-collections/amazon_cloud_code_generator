@@ -122,6 +122,16 @@ def generate_params(definitions: Iterable) -> str:
     return params
 
 
+def get_mutually_exclusive(schema: Dict) -> List:
+    primary_idenfifier = schema.get("primaryIdentifier", [])
+    entries: List = []
+
+    if len(primary_idenfifier) > 1:
+        entries.append([primary_idenfifier, "identifier"])
+
+    return entries
+
+
 def gen_required_if(schema: Dict) -> List:
     primary_idenfifier = schema.get("primaryIdentifier", [])
     required = schema.get("required", [])
@@ -268,6 +278,7 @@ class AnsibleModule:
         arguments = generate_argument_spec(documentation["options"])
         documentation_to_string = format_documentation(documentation)
         required_if = gen_required_if(self.schema)
+        mutually_exclusive = gen_required_if(self.schema)
         content = jinja2_renderer(
             self.template_file,
             arguments=indent(arguments, 4),
@@ -277,6 +288,7 @@ class AnsibleModule:
             params=indent(generate_params(documentation["options"]), 4),
             primary_identifier=self.schema["primaryIdentifier"],
             required_if=required_if,
+            mutually_exclusive=mutually_exclusive,
             create_only_properties=self.schema.get("createOnlyProperties", {}),
             handlers=list(self.schema.get("handlers", {}).keys()),
         )
