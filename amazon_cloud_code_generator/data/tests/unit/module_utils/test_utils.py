@@ -138,4 +138,4 @@ def test_diff_with_addition():
 
     assert match is False
     assert diff["before"] == {"section4": ["Bar"]}
-    assert diff["after"] == {"section4": ["Foo", "Bar"], "section5": ["FooBar"]}
+    assert diff["after"] == {"section5": ["FooBar"], "section4": ["Foo", "Bar"]}

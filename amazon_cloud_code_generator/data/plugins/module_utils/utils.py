@@ -6,6 +6,7 @@ from typing import Iterable, List, Dict, Union
 from ansible.module_utils.common.dict_transformations import (
     camel_dict_to_snake_dict,
     snake_dict_to_camel_dict,
+    recursive_diff,
 )
 
 from ansible.module_utils._text import to_native
@@ -176,40 +177,16 @@ def boto3_tag_list_to_ansible_dict(
     )
 
 
-def recursive_diff(dict1: Dict, dict2: Dict) -> Dict:
-    dict1_keys = set(dict1.keys())
-    dict2_keys = set(dict2.keys())
-    shared_keys = dict1_keys.intersection(dict2_keys)
-    shared_deltas = {
-        key: (dict1[key], dict2[key]) for key in shared_keys if dict1[key] != dict2[key]
-    }
-    new_keys = dict2_keys - dict1_keys
-    new_deltas = {key: (None, dict2[key]) for key in new_keys}
-    deltas = {**shared_deltas, **new_deltas}
-
-    return get_delta(deltas)
-
-
-def get_delta(deltas: Dict) -> Dict:
-    result: Dict = {}
-    for key, value in deltas.items():
-        if isinstance(value[0], dict):
-            tmp = recursive_diff(value[0], value[1])
-            if tmp:
-                result[key] = tmp
-        else:
-            result[key] = value[1]
-    return result
-
-
 def diff_dicts(existing: Dict, new: Dict) -> Union[bool, Dict]:
     result: Dict = {}
 
-    result["before"] = recursive_diff(new, existing)
-    result["after"] = recursive_diff(existing, new)
+    diff = recursive_diff(existing, new)
 
-    if not result["before"] and not result["after"]:
+    if not diff:
         return True, {}
+
+    result["before"] = diff[0]
+    result["after"] = diff[1]
 
     return False, result
 
