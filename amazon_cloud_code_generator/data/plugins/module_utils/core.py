@@ -54,6 +54,8 @@ from .utils import (
     snake_to_camel,
 )
 
+from ansible_collections.amazon.cloud.plugins.module_utils.waiters import get_waiter
+
 BOTO3_IMP_ERR = None
 try:
     import botocore
@@ -82,7 +84,18 @@ class CloudControlResource(object):
 
     def wait_until_resource_request_success(self, request_token: str):
         try:
-            self.client.get_waiter("resource_request_success").wait(
+            # This waiter 'resource_request_success' only waits to reach SUCCESS status. It fails otherwise.
+            # botocore.exceptions.WaiterError: Waiter ResourceRequestSuccess failed: Waiter encountered a terminal failure
+            # state: For expression "ProgressEvent.OperationStatus" we matched expected path: CANCEL_COMPLETE
+            # See https://github.com/boto/botocore/blob/develop/botocore/data/cloudcontrol/2021-09-30/waiters-2.json
+            # We should wait for CANCEL_IN_PROGRESS and reach CANCEL_COMPLETE before updating.
+            # Fall to a custom waiter.
+            #
+            # self.client.get_waiter("resource_request_success").wait(
+            #    RequestToken=request_token,
+            #    WaiterConfig=self._waiter_config,
+            # )
+            get_waiter(self.client, "resource_request_success").wait(
                 RequestToken=request_token,
                 WaiterConfig=self._waiter_config,
             )
@@ -446,10 +459,6 @@ class CloudControlResource(object):
                         Identifier=identifier,
                         PatchDocument=str(patch),
                     )
-                    if self.module.params.get("wait"):
-                        self.wait_until_resource_request_success(
-                            response["ProgressEvent"]["RequestToken"]
-                        )
                 except self.client.exceptions.ResourceNotFoundException:
                     # If there is an IN PROGRESS delete opration on the resource and
                     # the resource is deleted before (so it can't be updated)
