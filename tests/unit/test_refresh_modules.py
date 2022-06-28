@@ -36,7 +36,11 @@ params['tags'] = module.params.get('tags')"""
     schema = rm.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     added_ins = {"module": "1.0.0"}
-    documentation = g.generate_documentation(module, added_ins, "",)
+    documentation = g.generate_documentation(
+        module,
+        added_ins,
+        "",
+    )
     assert rm.generate_params(documentation["options"]) == expected_params
 
 
@@ -46,6 +50,15 @@ module: logs_log_group
 short_description: Create and manage log groups
 description: Create and manage log groups.
 options:
+    force:
+        default: false
+        description:
+        - Cancel IN_PROGRESS and PENDING resource requestes.
+        - Because you can only perform a single operation on a given resource at a
+            time, there might be cases where you need to cancel the current resource
+            operation to make the resource available so that another operation may
+            be performed on it.
+        type: bool
     kms_key_id:
         description:
         - The Amazon Resource Name (ARN) of the CMK to use when encrypting log data.
@@ -131,7 +144,11 @@ extends_documentation_fragment:
     schema = rm.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     added_ins = {"module": "1.0.0"}
-    documentation = g.generate_documentation(module, added_ins, "1.0.0",)
+    documentation = g.generate_documentation(
+        module,
+        added_ins,
+        "1.0.0",
+    )
 
     assert rm.format_documentation(documentation) == expected
 
@@ -145,11 +162,16 @@ argument_spec['tags'] = {'type': 'dict', 'required': False, 'aliases': ['resourc
 argument_spec['state'] = {'type': 'str', 'choices': ['present', 'absent', 'list', 'describe', 'get'], 'default': 'present'}
 argument_spec['wait'] = {'type': 'bool', 'default': False}
 argument_spec['wait_timeout'] = {'type': 'int', 'default': 320}
+argument_spec['force'] = {'type': 'bool', 'default': False}
 argument_spec['purge_tags'] = {'type': 'bool', 'required': False, 'default': True}"""
     schema = rm.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     added_ins = {"module": "1.0.0"}
-    documentation = g.generate_documentation(module, added_ins, "",)
+    documentation = g.generate_documentation(
+        module,
+        added_ins,
+        "",
+    )
 
     assert rm.generate_argument_spec(documentation["options"]) == expected_argument_spec
 

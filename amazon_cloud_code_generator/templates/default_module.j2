@@ -46,7 +46,7 @@ def main():
     state = module.params.get('state')
     identifier = module.params.get('{{primary_identifier}}')
 
-    results = {"changed": False, "result": []}
+    results = {"changed": False, "result": {}}
 
     if state == "list":
         if "list" not in handlers:

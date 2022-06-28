@@ -186,6 +186,7 @@ class CloudControlResource(object):
             self.module.fail_json_aws(e, msg="Failed to retrieve resource")
 
         result: List = normalize_response(response)
+
         return result
 
     def present(
@@ -235,9 +236,16 @@ class CloudControlResource(object):
         params = {
             "ResourceRequestStatusFilter": {
                 "Operations": ["CREATE", "DELETE", "UPDATE"],
-                "OperationStatuses": ["IN_PROGRESS"],
             }
         }
+
+        if self.module.params.get("force"):
+            params["ResourceRequestStatusFilter"]["OperationStatuses"] = [
+                "IN_PROGRESS",
+                "PENDING",
+            ]
+        else:
+            params["ResourceRequestStatusFilter"]["OperationStatuses"] = ["IN_PROGRESS"]
 
         response = self.list_resource_requests(params)
 
@@ -251,11 +259,28 @@ class CloudControlResource(object):
             )
 
             if in_progress_requests:
-                self.module.warn(
-                    f"There is one or more IN PROGRESS operations on {identifier}. Wait until there are no more IN PROGRESS operations before proceding."
-                )
-                for e in in_progress_requests:
-                    self.wait_until_resource_request_success(e["RequestToken"])
+                if self.module.params.get("force"):
+                    self.module.warn(
+                        f"There is one or more IN PROGRESS or PENDING resource requests on {identifier} that will be cancelled."
+                    )
+                    try:
+                        for e in in_progress_requests:
+                            self.client.cancel_resource_request(
+                                RequestToken=e["RequestToken"]
+                            )
+                    except (
+                        botocore.exceptions.BotoCoreError,
+                        botocore.exceptions.ClientError,
+                    ) as e:
+                        self.module.fail_json_aws(
+                            e, msg="Failed to cancel resource request"
+                        )
+                else:
+                    self.module.warn(
+                        f"There is one or more IN PROGRESS resource requests on {identifier}. Wait until there are no more IN PROGRESS resource requests before proceding."
+                    )
+                    for e in in_progress_requests:
+                        self.wait_until_resource_request_success(e["RequestToken"])
 
     def absent(self, type_name: str, identifier: str):
         changed: bool = False

@@ -83,20 +83,14 @@ def scrub_keys(a_dict: Dict, list_of_keys_to_remove: List[str]) -> Dict:
 
 
 def normalize_response(response: Iterable):
-    result: List = []
-
     resource_descriptions = response.get("ResourceDescription", {}) or response.get(
         "ResourceDescriptions", []
     )
     if isinstance(resource_descriptions, list):
         res = [_jsonify(r_d) for r_d in resource_descriptions]
-        _result = [camel_dict_to_snake_dict(r) for r in res]
-        result.append(_result)
+        return camel_dict_to_snake_dict(*res)
     else:
-        result.append(_jsonify(resource_descriptions))
-        result = [camel_dict_to_snake_dict(res) for res in result]
-
-    return result
+        return camel_dict_to_snake_dict(_jsonify(resource_descriptions))
 
 
 def ansible_dict_to_boto3_tag_list(

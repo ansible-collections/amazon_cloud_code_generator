@@ -17,7 +17,10 @@ EXAMPLES = r'''
 
 RETURN = r'''
 result:
-    description: Dictionary containing resource information.
+    description:
+        - When I(state=list), it is a list containing dictionaries of resource information.
+        - Otherwise, it is a dictionary of resource information.
+        - When I(state=absent), it is an empty dictionary.
     returned: always
     type: complex
     contains:
