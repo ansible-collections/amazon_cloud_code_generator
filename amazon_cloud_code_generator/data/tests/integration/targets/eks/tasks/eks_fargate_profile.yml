@@ -70,7 +70,7 @@
   amazon.cloud.eks_fargate_profile:
     fargate_profile_name: "{{ eks_fargate_profile_name_a }}"
     state: present
-    cluster_name: "{{ _result_create_cluster.result[0].identifier }}"
+    cluster_name: "{{ _result_create_cluster.result.identifier }}"
     pod_execution_role_arn: "{{ _result_create_iam_role_fp.arn }}"
     subnets: >-
       {{_result_create_subnets.results | selectattr('subnet.tags.Name', 'contains',

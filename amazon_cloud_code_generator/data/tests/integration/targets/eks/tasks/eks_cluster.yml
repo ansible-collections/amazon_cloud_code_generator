@@ -103,7 +103,7 @@
 - name: Check that EKS cluster was created
   assert:
      that:
-      - _result_create_cluster.result[0].identifier == eks_cluster_name
+      - _result_create_cluster.result.identifier == "{{ eks_cluster_name }}"
 
 - name: Describe EKS cluster
   amazon.cloud.eks_cluster:

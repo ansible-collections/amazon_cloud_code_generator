@@ -190,9 +190,9 @@ class CloudControlResource(object):
         return self.get_resource(type_name, identifier)
 
     def get_resource(
-        self, type_name: str, primary_identifier: Union[str, List]
+        self, type_name: str, primary_identifier: Union[str, List, Dict]
     ) -> List:
-        # This is the "describe" equivalent for CCAPI
+        # This is the "describe" equivalent for AWS Cloud Control API
         response: Dict = {}
         identifier: Dict = {}
 
@@ -202,6 +202,8 @@ class CloudControlResource(object):
                     snake_to_camel(id, capitalize_first=True)
                 ] = self.module.params.get(id)
             primary_identifier = json.dumps(identifier)
+        elif isinstance(primary_identifier, dict):
+            primary_identifier = json.dumps(primary_identifier)
 
         try:
             response = self.client.get_resource(
@@ -435,7 +437,7 @@ class CloudControlResource(object):
                         self.module.fail_json_aws(
                             e, msg="Failed to cancel resource request"
                         )
-                
+
                 self.wait_for_in_progress_requests(in_progress_requests, identifier)
 
                 try:
@@ -448,7 +450,6 @@ class CloudControlResource(object):
                         self.wait_until_resource_request_success(
                             response["ProgressEvent"]["RequestToken"]
                         )
-                    results["changed"] = True
                 except self.client.exceptions.ResourceNotFoundException:
                     # If there is an IN PROGRESS delete opration on the resource and
                     # the resource is deleted before (so it can't be updated)
@@ -463,7 +464,7 @@ class CloudControlResource(object):
                     self.wait_until_resource_request_success(
                         response["ProgressEvent"]["RequestToken"]
                     )
-            changed = True
+            results["changed"] = True
 
         if self.module._diff:
             match, diffs = diff_dicts(
