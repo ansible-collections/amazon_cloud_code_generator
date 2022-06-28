@@ -10,6 +10,7 @@ __metaclass__ = type
 from ansible_collections.amazon.cloud.plugins.module_utils.utils import (
     ansible_dict_to_boto3_tag_list,
     boto3_tag_list_to_ansible_dict,
+    diff_dicts,
 )
 
 
@@ -54,3 +55,87 @@ def test_boto3_tag_list_to_ansible_dict_empty():
     assert boto3_tag_list_to_ansible_dict([]) == {}
     # Minio returns [{}] when there are no tags
     assert boto3_tag_list_to_ansible_dict([{}]) == {}
+
+
+def test_diff_empty_dicts_no_diff():
+    a_dict = {}
+    b_dict = {}
+    match, diff = diff_dicts(a_dict, b_dict)
+
+    assert match is True
+    assert diff == {}
+
+
+def test_diff_no_diff():
+    a_dict = {
+        "section1": {"category1": 1, "category2": 2},
+        "section2": {
+            "category1": 1,
+            "category2": 2,
+            "category4": {"foo_1": 1, "foo_2": {"bar_1": [1]}},
+        },
+        "section3": ["elem1", "elem2", "elem3"],
+        "section4": ["Foo"],
+    }
+    match, diff = diff_dicts(a_dict, a_dict)
+
+    assert match is True
+    assert diff == {}
+
+
+def test_diff_no_addition():
+    a_dict = {
+        "section1": {"category1": 1, "category2": 2},
+        "section2": {
+            "category1": 1,
+            "category2": 2,
+            "category4": {"foo_1": 1, "foo_2": {"bar_1": [1]}},
+        },
+        "section3": ["elem3", "elem1", "elem2"],
+        "section4": ["Bar"],
+    }
+    b_dict = {
+        "section1": {"category1": 1, "category2": 2},
+        "section2": {
+            "category1": 1,
+            "category2": 3,
+            "category4": {"foo_1": 1, "foo_2": {"bar_1": [1]}},
+        },
+        "section3": ["elem3", "elem1", "elem2"],
+        "section4": ["Foo"],
+    }
+
+    match, diff = diff_dicts(a_dict, b_dict)
+
+    assert match is False
+    assert diff["before"] == {"section4": ["Bar"], "section2": {"category2": 2}}
+    assert diff["after"] == {"section4": ["Foo"], "section2": {"category2": 3}}
+
+
+def test_diff_with_addition():
+    a_dict = {
+        "section1": {"category1": 1, "category2": 2},
+        "section2": {
+            "category1": 1,
+            "category2": 2,
+            "category4": {"foo_1": 1, "foo_2": {"bar_1": [1]}},
+        },
+        "section3": ["elem3", "elem1", "elem2"],
+        "section4": ["Bar"],
+    }
+    b_dict = {
+        "section1": {"category1": 1, "category2": 2},
+        "section2": {
+            "category1": 1,
+            "category2": 2,
+            "category4": {"foo_1": 1, "foo_2": {"bar_1": [1]}},
+        },
+        "section3": ["elem3", "elem1", "elem2"],
+        "section4": ["Foo", "Bar"],
+        "section5": ["FooBar"],
+    }
+    match, diff = diff_dicts(a_dict, b_dict)
+
+    assert match is False
+    assert diff["before"] == {"section4": ["Bar"]}
+    assert diff["after"] == {"section5": ["FooBar"], "section4": ["Foo", "Bar"]}

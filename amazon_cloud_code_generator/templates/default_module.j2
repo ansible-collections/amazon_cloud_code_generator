@@ -59,8 +59,7 @@ def main():
         results["result"] = cloud.get_resource(type_name, identifier)
 
     if state == "present":
-        results["changed"] |= cloud.present(type_name, identifier, params_to_set, create_only_params, handlers)
-        results["result"] = cloud.get_resource(type_name, identifier)
+        results = cloud.present(type_name, identifier, params_to_set, create_only_params, handlers)
 
     if state == "absent":
         results["changed"] |= cloud.absent(type_name, identifier)

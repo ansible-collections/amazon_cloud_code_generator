@@ -1,11 +1,12 @@
 import re
 import json
 import functools
-from typing import Iterable, List, Dict
+from typing import Iterable, List, Dict, Union
 
 from ansible.module_utils.common.dict_transformations import (
     camel_dict_to_snake_dict,
     snake_dict_to_camel_dict,
+    recursive_diff,
 )
 
 from ansible.module_utils._text import to_native
@@ -168,6 +169,20 @@ def boto3_tag_list_to_ansible_dict(
         "Couldn't find tag key (candidates %s) in tag list %s"
         % (str(tag_candidates), str(tags_list))
     )
+
+
+def diff_dicts(existing: Dict, new: Dict) -> Union[bool, Dict]:
+    result: Dict = {}
+
+    diff = recursive_diff(existing, new)
+
+    if not diff:
+        return True, {}
+
+    result["before"] = diff[0]
+    result["after"] = diff[1]
+
+    return False, result
 
 
 class JsonPatch(list):

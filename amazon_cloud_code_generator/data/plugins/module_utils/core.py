@@ -50,6 +50,7 @@ from .utils import (
     to_async,
     ansible_dict_to_boto3_tag_list,
     snake_dict_to_camel_dict,
+    diff_dicts,
 )
 
 BOTO3_IMP_ERR = None
@@ -197,18 +198,25 @@ class CloudControlResource(object):
         create_only_params: List,
         handlers: Dict,
     ) -> bool:
+        results = {"changed": False, "result": {}}
         try:
             resource = self.client.get_resource(
                 TypeName=type_name, Identifier=identifier
             )
-            return self.update_resource(resource, params, create_only_params, handlers)
+            results = self.update_resource(
+                resource, params, create_only_params, handlers
+            )
         except self.client.exceptions.ResourceNotFoundException:
-            return self.create_resource(type_name, identifier, params)
+            results["changed"] |= self.create_resource(type_name, identifier, params)
         except (
             botocore.exceptions.BotoCoreError,
             botocore.exceptions.ClientError,
         ) as e:
             self.module.fail_json_aws(e, msg="Failed to modify resource")
+
+        results["result"] = self.get_resource(type_name, identifier)
+
+        return results
 
     def create_resource(self, type_name: str, identifier: str, params: Dict) -> bool:
         changed: bool = False
@@ -329,7 +337,7 @@ class CloudControlResource(object):
         identifier = resource["ResourceDescription"]["Identifier"]
         type_name = resource["TypeName"]
         properties = json.loads(resource["ResourceDescription"]["Properties"])
-        changed: bool = False
+        results: Dict = {"changed": False, "result": []}
 
         # Ignore createOnlyProperties that can be set only during resource creation
         params = scrub_keys(params_to_set, create_only_params)
@@ -348,7 +356,6 @@ class CloudControlResource(object):
 
         if patch:
             if "update" not in handlers:
-                results = {"changed": False, "result": {}}
                 self.module.exit_json(
                     **results, msg=f"Resource type {type_name} cannot be updated."
                 )
@@ -365,10 +372,17 @@ class CloudControlResource(object):
                         self.wait_until_resource_request_success(
                             response["ProgressEvent"]["RequestToken"]
                         )
-                changed = True
+                results["changed"] = True
             except (
                 botocore.exceptions.BotoCoreError,
                 botocore.exceptions.ClientError,
             ) as e:
                 self.module.fail_json_aws(e, msg="Failed to update resource")
-        return changed
+
+        if self.module._diff:
+            match, diffs = diff_dicts(
+                properties, json.loads(response["ProgressEvent"]["ResourceModel"])
+            )
+            results["diff"] = diffs
+
+        return results
