@@ -73,7 +73,6 @@ options:
         default: true
         description:
         - Remove tags not listed in I(tags).
-        required: false
         type: bool
     retention_in_days:
         choices:
@@ -121,7 +120,6 @@ options:
         description:
         - A dict of tags to apply to the resource.
         - To remove all tags set I(tags={}) and I(purge_tags=true).
-        required: false
         type: dict
     wait:
         default: false
@@ -158,12 +156,12 @@ def test__generate_argument_spec():
 argument_spec['log_group_name'] = {'type': 'str'}
 argument_spec['kms_key_id'] = {'type': 'str'}
 argument_spec['retention_in_days'] = {'type': 'int', 'choices': [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]}
-argument_spec['tags'] = {'type': 'dict', 'required': False, 'aliases': ['resource_tags']}
+argument_spec['tags'] = {'type': 'dict', 'aliases': ['resource_tags']}
 argument_spec['state'] = {'type': 'str', 'choices': ['present', 'absent', 'list', 'describe', 'get'], 'default': 'present'}
 argument_spec['wait'] = {'type': 'bool', 'default': False}
 argument_spec['wait_timeout'] = {'type': 'int', 'default': 320}
 argument_spec['force'] = {'type': 'bool', 'default': False}
-argument_spec['purge_tags'] = {'type': 'bool', 'required': False, 'default': True}"""
+argument_spec['purge_tags'] = {'type': 'bool', 'default': True}"""
     schema = rm.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     added_ins = {"module": "1.0.0"}

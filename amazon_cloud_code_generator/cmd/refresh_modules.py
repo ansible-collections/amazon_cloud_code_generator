@@ -124,21 +124,21 @@ def generate_params(definitions: Iterable) -> str:
 
 def gen_required_if(schema: Dict) -> List:
     primary_idenfifier = schema.get("primaryIdentifier", [])
-    read_only_properties = schema.get("readOnlyProperties", {})
     required = schema.get("required", [])
-    states = ["absent", "get"]
     entries: List = []
-    identifiers: List = []
+    states = ["absent", "get"]
 
-    # Require primaryIdentifier only if not marked as a readOnlyProperty and further required properties
-    # when state == 'present'
-    if primary_idenfifier:
-        for pr in primary_idenfifier:
-            if pr not in read_only_properties:
-                identifiers.append(pr)
-        entries.append(["state", "present", list(set([*identifiers, *required])), True])
-
-        [entries.append(["state", state, identifiers, True]) for state in states]
+    entries.append(
+        ["state", "present", list(set([*primary_idenfifier, *required])), True]
+    )
+    [
+        entries.append(["state", state, list(set(primary_idenfifier)), True])
+        for state in states
+    ]
+    # For compound primary identifiers consisting of multiple resource properties strung together,
+    # use the property values in the order that they are specified in the primary identifier definition
+    if len(primary_idenfifier) > 1:
+        entries.append(["state", "list", list(set(primary_idenfifier[:-1])), True])
 
     return entries
 
@@ -221,7 +221,14 @@ def generate_schema(raw_content) -> Dict:
 
     for key, value in schema.items():
         if isinstance(value, list):
-            schema[key] = [camel_to_snake(p.split("/")[-1].strip()) for p in value]
+            elems = []
+            for v in value:
+                if isinstance(v, list):
+                    elems.extend([camel_to_snake(p.split("/")[-1].strip()) for p in v])
+                else:
+                    elems.append(camel_to_snake(v.split("/")[-1].strip()))
+
+            schema[key] = elems
 
     return schema
 
@@ -257,6 +264,7 @@ class AnsibleModule:
             added_ins,
             next_version,
         )
+
         arguments = generate_argument_spec(documentation["options"])
         documentation_to_string = format_documentation(documentation)
         required_if = gen_required_if(self.schema)
@@ -267,10 +275,10 @@ class AnsibleModule:
             name=self.name,
             resource_type=f"'{self.schema.get('typeName')}'",
             params=indent(generate_params(documentation["options"]), 4),
-            primary_identifier=self.schema["primaryIdentifier"][0],
+            primary_identifier=self.schema["primaryIdentifier"],
             required_if=required_if,
             create_only_properties=self.schema.get("createOnlyProperties", {}),
-            handlers=self.schema.get("handlers", {}),
+            handlers=list(self.schema.get("handlers", {}).keys()),
         )
 
         self.write_module(target_dir, content)

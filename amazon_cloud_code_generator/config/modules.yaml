@@ -79,3 +79,4 @@
     documentation:
       short_description: Specifies the Object Lambda Access Point resource policy document
       description: Create and manage Object Lambda Access Point resource policy document.
+- eks_fargate_profile:

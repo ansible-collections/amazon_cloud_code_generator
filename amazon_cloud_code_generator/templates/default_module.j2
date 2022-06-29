@@ -44,14 +44,14 @@ def main():
     handlers = {{handlers}}
 
     state = module.params.get('state')
-    identifier = module.params.get('{{primary_identifier}}')
+    identifier = {{primary_identifier}}
 
     results = {"changed": False, "result": {}}
 
     if state == "list":
         if "list" not in handlers:
             module.exit_json(**results, msg=f"Resource type {type_name} cannot be listed.")
-        results["result"] = cloud.list_resources(type_name)
+        results["result"] = cloud.list_resources(type_name, identifier)
 
     if state in ("describe", "get"):
         if "read" not in handlers:

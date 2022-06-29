@@ -16,7 +16,6 @@
             "description": [
                 "Remove tags not listed in I(tags)."
             ],
-            "required": false,
             "type": "bool"
         },
         "kms_key_id": {
@@ -77,7 +76,6 @@
                 "A dict of tags to apply to the resource.",
                 "To remove all tags set I(tags={}) and I(purge_tags=true)."
             ],
-            "required": false,
             "type": "dict"
         },
         "wait": {

@@ -203,8 +203,7 @@ class Documentation:
                 if key == "const":
                     options["default"] = options.pop(key)
 
-    def ensure_required(self, a_dict: Iterable):
-        """Add required=True for specific parameters"""
+    def cleanup_required(self, a_dict: Iterable):
         a_dict_copy = copy.copy(a_dict)
 
         if not isinstance(a_dict, dict):
@@ -221,14 +220,9 @@ class Documentation:
                     v = a_dict[k]
 
                 if "required" in v and isinstance(v["required"], list):
-                    for r in v["required"]:
-                        if r in a_dict[k]["suboptions"]:
-                            if "default" in a_dict[k]["suboptions"][r]:
-                                continue
-                            a_dict[k]["suboptions"][r]["required"] = True
                     a_dict[k].pop("required")
 
-            self.ensure_required(a_dict[k])
+            self.cleanup_required(a_dict[k])
 
     def preprocess(self) -> Iterable:
         list_of_keys_to_remove = [
@@ -247,7 +241,7 @@ class Documentation:
             "minItems",
         ]
         self.replace_keys(self.options, self.definitions)
-        self.ensure_required(self.options)
+        self.cleanup_required(self.options)
         sanitized_options: Iterable = camel_to_snake(
             scrub_keys(self.options, list_of_keys_to_remove)
         )
@@ -267,10 +261,6 @@ class Documentation:
         sanitized_options: Iterable = ensure_description(
             sanitized_options, "description"
         )
-
-        if self.required and all(self.required):
-            for r in self.required:
-                sanitized_options[r]["required"] = True
 
         return sanitized_options
 
@@ -354,13 +344,11 @@ def generate_documentation(
                 "To remove all tags set I(tags={}) and I(purge_tags=true).",
             ],
             "type": "dict",
-            "required": False,
             "aliases": ["resource_tags"],
         }
         documentation["options"]["purge_tags"] = {
             "description": ["Remove tags not listed in I(tags)."],
             "type": "bool",
-            "required": False,
             "default": True,
         }
 
