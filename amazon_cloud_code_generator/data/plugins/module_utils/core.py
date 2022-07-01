@@ -409,19 +409,27 @@ class CloudControlResource(object):
 
         # Ignore createOnlyProperties that can be set only during resource creation
         params = scrub_keys(params_to_set, create_only_params)
-
         patch = JsonPatch()
-        for k, v in params.items():
+        for k, v_in in params.items():
             strategy = "merge"
-            if v == properties.get(k):
-                continue
-            if k not in properties:
-                patch.append(op("add", k, v))
-            else:
-                if self.module.params.get("purge_{0}".format(k.lower())):
+            if k in properties:
+                v_exisiting = properties.get(k)
+                # Continue loop if both values are equal
+                if v_in == v_exisiting:
+                    continue
+                # Compare lists contents, not order (i.e. list of tag dicts)
+                if isinstance(v_in, list) and isinstance(v_exisiting, list):
+                    if [tag for tag in v_in if tag not in v_exisiting] == [] and \
+                       [tag for tag in v_exisiting if tag not in v_in] == []:
+                        continue
+                # If purge, then replace old resource
+                if self.module.params.get("purge_{0}".format(k.lower())) == True:
                     strategy = "replace"
-                patch.append(make_op(k, properties[k], v, strategy))
-
+                # Add difference to JSON patch
+                patch.append(make_op(k, v_exisiting, v_in, strategy))
+            else:
+                # Add patch if key isnt in properties
+                patch.append(op("add", k, v_in))
         if patch:
             if "update" not in handlers:
                 self.module.exit_json(
@@ -450,7 +458,6 @@ class CloudControlResource(object):
                         )
 
                 self.wait_for_in_progress_requests(in_progress_requests, identifier)
-
                 try:
                     response = self.client.update_resource(
                         TypeName=type_name,
@@ -467,10 +474,10 @@ class CloudControlResource(object):
                 ) as e:
                     self.module.fail_json_aws(e, msg="Failed to update resource")
 
-                if self.module.params.get("wait"):
-                    self.wait_until_resource_request_success(
-                        response["ProgressEvent"]["RequestToken"]
-                    )
+                # Always wait to update to ensure correct data returned to user
+                self.wait_until_resource_request_success(
+                    response["ProgressEvent"]["RequestToken"]
+                )
             results["changed"] = True
 
         if self.module._diff:
