@@ -325,13 +325,15 @@ class CloudControlResource(object):
     def wait_for_in_progress_requests(
         self, in_progress_requests: List, identifier: str
     ):
-        self.module.warn(
-            f"There is one or more IN PROGRESS operations on {identifier}. Wait until there are no more IN PROGRESS operations before proceding."
-        )
-        [
-            self.wait_until_resource_request_success(e["RequestToken"])
-            for e in in_progress_requests
-        ]
+        # Dont warn if nothing to wait on
+        if in_progress_requests:
+            self.module.warn(
+                f"There is one or more IN PROGRESS operations on {identifier}. Wait until there are no more IN PROGRESS operations before proceding."
+            )
+            [
+                self.wait_until_resource_request_success(e["RequestToken"])
+                for e in in_progress_requests
+            ]
 
     def absent(self, type_name: str, primary_identifier: List):
         changed: bool = False
