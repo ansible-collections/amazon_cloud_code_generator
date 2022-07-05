@@ -419,8 +419,9 @@ class CloudControlResource(object):
                     continue
                 # Compare lists contents, not order (i.e. list of tag dicts)
                 if isinstance(v_in, list) and isinstance(v_exisiting, list):
-                    if [tag for tag in v_in if tag not in v_exisiting] == [] and \
-                       [tag for tag in v_exisiting if tag not in v_in] == []:
+                    if [tag for tag in v_in if tag not in v_exisiting] == [] and [
+                        tag for tag in v_exisiting if tag not in v_in
+                    ] == []:
                         continue
                 # If purge, then replace old resource
                 if self.module.params.get("purge_{0}".format(k.lower())) == True:
@@ -428,7 +429,9 @@ class CloudControlResource(object):
                 # Add difference to JSON patch
                 patch.append(make_op(k, v_exisiting, v_in, strategy))
             else:
-                # Add patch if key isnt in properties
+                # Add patch if key isnt in properties - dont add tags if tags = {} and no tags on resource
+                if k == 'Tags' and v_in == [] and 'tags' not in properties:
+                    continue
                 patch.append(op("add", k, v_in))
         if patch:
             if "update" not in handlers:

@@ -107,7 +107,17 @@ def normalize_response(response: Iterable):
     if isinstance(resource_descriptions, list):
         return [_normalize_response(resource) for resource in resource_descriptions]
     else:
+<<<<<<< HEAD
         return _normalize_response(resource_descriptions)
+=======
+        res = _jsonify(resource_descriptions)
+        res = camel_dict_to_snake_dict(res)
+        if "tags" in res["properties"]:
+            res["properties"]["tags"] = boto3_tag_list_to_ansible_dict(
+                res["properties"]["tags"]
+            )
+        return res
+>>>>>>> af12711 (comment out broken tagging tests)
 
 
 def ansible_dict_to_boto3_tag_list(
