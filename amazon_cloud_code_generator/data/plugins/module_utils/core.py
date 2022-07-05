@@ -299,16 +299,12 @@ class CloudControlResource(object):
         params = {
             "ResourceRequestStatusFilter": {
                 "Operations": ["CREATE", "DELETE", "UPDATE"],
+                "OperationStatuses": [
+                    "IN_PROGRESS",
+                    "PENDING",
+                ],
             }
         }
-
-        if self.module.params.get("force"):
-            params["ResourceRequestStatusFilter"]["OperationStatuses"] = [
-                "IN_PROGRESS",
-                "PENDING",
-            ]
-        else:
-            params["ResourceRequestStatusFilter"]["OperationStatuses"] = ["IN_PROGRESS"]
 
         response = self.list_resource_requests(params)
 
