@@ -30,7 +30,7 @@ def main():
     _params_to_set = {k: v for k, v in params.items() if v is not None}
 
     # Only if resource is taggable
-    if module.params.get("tags", None):
+    if module.params.get("tags") is not None:
         _params_to_set["tags"] = ansible_dict_to_boto3_tag_list(
             module.params["tags"]
         )
