@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
 import argparse
-import collections
 import io
 import pathlib
+from typing import Dict, List
 import ruamel.yaml
 import yaml
 
 
-def _task_to_string(task):
+def _task_to_string(task: Dict) -> str:
     a = io.StringIO()
     _yaml = ruamel.yaml.YAML()
     _yaml.dump([task], a)
@@ -16,112 +16,74 @@ def _task_to_string(task):
     return a.read().rstrip()
 
 
-def get_tasks(target_dir, play="main.yaml"):
-    tasks = []
+def get_nested_tasks(task: Dict, target_dir: str) -> List:
+    tasks: List = []
+    if "include_tasks" in task:
+        tasks += get_tasks(target_dir, play=task["include_tasks"])
+    elif "import_tasks" in task:
+        tasks += get_tasks(target_dir, play=task["import_tasks"])
+    else:
+        tasks.append(task)
+
+    return tasks
+
+
+def get_tasks(target_dir: str, play: str = "main.yml") -> List:
+    tasks: List = []
     current_file = target_dir / play
-    _yaml = ruamel.yaml.YAML()
-    _yaml.indent(sequence=4, offset=2)
-    for task in _yaml.load(current_file.open()):
+
+    with open(current_file) as f:
+        data = yaml.load(f, Loader=yaml.FullLoader)
+
+    for task in data:
         if "include_tasks" in task:
             tasks += get_tasks(target_dir, play=task["include_tasks"])
         elif "import_tasks" in task:
             tasks += get_tasks(target_dir, play=task["import_tasks"])
+        elif "block" in task:
+            for item in task["block"]:
+                tasks += get_nested_tasks(item, target_dir)
+        elif "always" in task:
+            for item in task["always"]:
+                tasks += get_nested_tasks(item, target_dir)
         else:
             tasks.append(task)
+
     return tasks
 
 
-def naive_variable_from_jinja2(raw):
-    jinja2_string = raw.strip(" }{}")
-    if "lookup(" in jinja2_string:
-        return None
-    if jinja2_string.startswith("not "):
-        jinja2_string = jinja2_string[4:]
-    variable = jinja2_string.split(".")[0]
-    if variable == "item":
-        return None
-    return variable
+def extract(tasks: List, collection_name: str) -> Dict:
+    by_modules: Dict = {}
 
+    for item in tasks:
+        if "tags" in item and "docs" in item["tags"]:
+            item.pop("tags")
 
-def list_dependencies(task):
-    dependencies = []
-    if isinstance(task, str):
-        if task[0] != "{":
-            return []
-        variable = naive_variable_from_jinja2(task)
-        if variable:
-            return [variable]
-    for k, v in task.items():
-        if isinstance(v, dict):
-            dependencies += list_dependencies(v)
-        elif isinstance(v, list):
-            for i in v:
-                dependencies += list_dependencies(i)
-        elif not isinstance(v, str):
-            pass
-        elif "{{" in v:
-            variable = naive_variable_from_jinja2(v)
-            if variable:
-                dependencies.append(variable)
-        elif k == "with_items":
-            dependencies.append(v.split(".")[0])
-    dependencies = [i for i in dependencies if not i.startswith("_")]
-    return list(set(dependencies))
+            if "ignore_errors" in item:
+                item.pop("ignore_errors")
 
+            module_fqcn = None
+            for key in list(item.keys()):
+                if key.startswith(collection_name):
+                    module_fqcn = key
+                    break
 
-def extract(tasks, collection_name):
-    by_modules = collections.defaultdict(dict)
-    registers = {}
-
-    for task in tasks:
-        if "name" not in task:
-            continue
-
-        if task["name"].startswith("_"):
-            print(f"Skip task {task['name']} because of the _")
-            continue
-
-        depends_on = []
-        for r in list_dependencies(task):
-            if r not in registers:
-                print(
-                    f"task: {task['name']}\nCannot find key '{r}' in the known variables: {registers.keys()}"
-                )
+            if not module_fqcn:
                 continue
-            depends_on += registers[r]
 
-        if "register" in task:
-            if task["register"].startswith("_"):
-                print(f"Hiding register {task['register']} because of the _ prefix.")
-                del task["register"]
-            else:
-                registers[task["register"]] = depends_on + [task]
-
-        if "set_fact" in task:
-            for fact_name in task["set_fact"]:
-                registers[fact_name] = depends_on + [task]
-
-        module_fqcn = None
-        for key in list(task.keys()):
-            if key.startswith(collection_name):
-                module_fqcn = key
-                break
-        if not module_fqcn:
-            continue
-
-        if module_fqcn not in by_modules:
-            by_modules[module_fqcn] = {
-                "blocks": [],
-            }
-        by_modules[module_fqcn]["blocks"] += depends_on + [task]
+            if module_fqcn not in by_modules:
+                by_modules[module_fqcn] = {
+                    "blocks": [],
+                }
+            by_modules[module_fqcn]["blocks"] += [item]
 
     return by_modules
 
 
-def flatten_module_examples(module_examples):
-    result = ""
+def flatten_module_examples(module_examples: List) -> str:
+    result: str = ""
     blocks = module_examples["blocks"]
-    seen = []
+    seen: List = []
 
     for block in blocks:
         if block in seen:
@@ -131,7 +93,7 @@ def flatten_module_examples(module_examples):
     return result
 
 
-def inject(target_dir, extracted_examples):
+def inject(target_dir: str, extracted_examples: List):
     module_dir = target_dir / "plugins" / "modules"
     for module_fqcn in extracted_examples:
         module_name = module_fqcn.split(".")[-1]
@@ -145,10 +107,10 @@ def inject(target_dir, extracted_examples):
         new_content = ""
         in_examples_block = False
         for l in module_path.read_text().split("\n"):
-            if l == "EXAMPLES = r'''":
+            if l == 'EXAMPLES = r"""':
                 in_examples_block = True
                 new_content += l + "\n" + examples_section_to_inject.lstrip("\n")
-            elif in_examples_block and l == "'''":
+            elif in_examples_block and l == '"""':
                 in_examples_block = False
                 new_content += l + "\n"
             elif in_examples_block:
@@ -181,6 +143,7 @@ def main():
             continue
         task_dir = scenario_dir / "tasks"
         tasks += get_tasks(task_dir)
+
     extracted_examples = extract(tasks, collection_name)
     inject(args.target_dir, extracted_examples)
 
