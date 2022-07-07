@@ -146,7 +146,12 @@ def test_normalize_response_single():
     response = {
         "ResourceDescription": {
             "Identifier": "test_one",
-            "Properties": "{\"BucketName\":\"test_one\",\"RegionalDomainName\":\"test_one.s3.us-east-1.amazonaws.com\",\"DomainName\":\"test_one.s3.amazonaws.com\",\"WebsiteURL\":\"http://test_one.s3-website-us-east-1.amazonaws.com\",\"DualStackDomainName\":\"test_one.s3.dualstack.us-east-1.amazonaws.com\",\"Arn\":\"arn:aws:s3:::test_one\",\"Tags\":[{\"Value\":\"pascalCaseValue\",\"Key\":\"newPascalCaseKey\"},{\"Value\":\"CamelCaseValue\",\"Key\":\"NewCamelCaseKey\"},{\"Value\":\"snake_case_value\",\"Key\":\"new_snake_case_key\"},{\"Value\":\"Value with spaces\",\"Key\":\"New Key with Spaces\"}]}"
+            "Properties": "{\"BucketName\":\"test_one\",\"RegionalDomainName\":\"test_one.s3.us-east-1.amazonaws.com\", \
+            \"DomainName\":\"test_one.s3.amazonaws.com\",\"WebsiteURL\":\"http://test_one.s3-website-us-east-1.amazonaws.com\", \
+            \"DualStackDomainName\":\"test_one.s3.dualstack.us-east-1.amazonaws.com\", \
+            \"Arn\":\"arn:aws:s3:::test_one\",\"Tags\":[{\"Value\":\"pascalCaseValue\",\"Key\":\"newPascalCaseKey\"}, \
+            {\"Value\":\"CamelCaseValue\",\"Key\":\"NewCamelCaseKey\"},{\"Value\":\"snake_case_value\",\"Key\":\"new_snake_case_key\"}, \
+            {\"Value\":\"Value with spaces\",\"Key\":\"New Key with Spaces\"}]}"
         }
     }
     normalized_response = {
@@ -174,11 +179,21 @@ def test_normalize_response_multiple():
         "ResourceDescriptions": [
             {
                 "Identifier": "test_one",
-                "Properties": "{\"BucketName\":\"test_one\",\"RegionalDomainName\":\"test_one.s3.us-east-1.amazonaws.com\",\"DomainName\":\"test_one.s3.amazonaws.com\",\"WebsiteURL\":\"http://test_one.s3-website-us-east-1.amazonaws.com\",\"DualStackDomainName\":\"test_one.s3.dualstack.us-east-1.amazonaws.com\",\"Arn\":\"arn:aws:s3:::test_one\",\"Tags\":[{\"Value\":\"pascalCaseValue\",\"Key\":\"newPascalCaseKey\"},{\"Value\":\"CamelCaseValue\",\"Key\":\"NewCamelCaseKey\"},{\"Value\":\"snake_case_value\",\"Key\":\"new_snake_case_key\"},{\"Value\":\"Value with spaces\",\"Key\":\"New Key with Spaces\"}]}"
+                "Properties": "{\"BucketName\":\"test_one\",\"RegionalDomainName\":\"test_one.s3.us-east-1.amazonaws.com\", \
+                \"DomainName\":\"test_one.s3.amazonaws.com\",\"WebsiteURL\":\"http://test_one.s3-website-us-east-1.amazonaws.com\", \
+                \"DualStackDomainName\":\"test_one.s3.dualstack.us-east-1.amazonaws.com\", \
+                \"Arn\":\"arn:aws:s3:::test_one\",\"Tags\":[{\"Value\":\"pascalCaseValue\",\"Key\":\"newPascalCaseKey\"}, \
+                {\"Value\":\"CamelCaseValue\",\"Key\":\"NewCamelCaseKey\"},{\"Value\":\"snake_case_value\",\"Key\":\"new_snake_case_key\"}, \
+                {\"Value\":\"Value with spaces\",\"Key\":\"New Key with Spaces\"}]}"
             },
             {
                 "Identifier": "test_two",
-                "Properties": "{\"BucketName\":\"test_two\",\"RegionalDomainName\":\"test_two.s3.us-east-1.amazonaws.com\",\"DomainName\":\"test_two.s3.amazonaws.com\",\"WebsiteURL\":\"http://test_two.s3-website-us-east-1.amazonaws.com\",\"DualStackDomainName\":\"test_two.s3.dualstack.us-east-1.amazonaws.com\",\"Arn\":\"arn:aws:s3:::test_two\",\"Tags\":[{\"Value\":\"pascalCaseValue\",\"Key\":\"newPascalCaseKey\"},{\"Value\":\"CamelCaseValue\",\"Key\":\"NewCamelCaseKey\"},{\"Value\":\"snake_case_value\",\"Key\":\"new_snake_case_key\"},{\"Value\":\"Value with spaces\",\"Key\":\"New Key with Spaces\"}]}"
+                "Properties": "{\"BucketName\":\"test_two\",\"RegionalDomainName\":\"test_two.s3.us-east-1.amazonaws.com\", \
+                \"DomainName\":\"test_two.s3.amazonaws.com\",\"WebsiteURL\":\"http://test_two.s3-website-us-east-1.amazonaws.com\", \
+                \"DualStackDomainName\":\"test_two.s3.dualstack.us-east-1.amazonaws.com\", \
+                \"Arn\":\"arn:aws:s3:::test_two\",\"Tags\":[{\"Value\":\"pascalCaseValue\",\"Key\":\"newPascalCaseKey\"}, \
+                {\"Value\":\"CamelCaseValue\",\"Key\":\"NewCamelCaseKey\"},{\"Value\":\"snake_case_value\",\"Key\":\"new_snake_case_key\"}, \
+                {\"Value\":\"Value with spaces\",\"Key\":\"New Key with Spaces\"}]}"
             }
         ]
     }
