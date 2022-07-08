@@ -107,10 +107,10 @@ def inject(target_dir: str, extracted_examples: List):
         new_content = ""
         in_examples_block = False
         for l in module_path.read_text().split("\n"):
-            if l == 'EXAMPLES = r"""':
+            if l == "EXAMPLES = r'''":
                 in_examples_block = True
                 new_content += l + "\n" + examples_section_to_inject.lstrip("\n")
-            elif in_examples_block and l == '"""':
+            elif in_examples_block and l == "'''":
                 in_examples_block = False
                 new_content += l + "\n"
             elif in_examples_block:
