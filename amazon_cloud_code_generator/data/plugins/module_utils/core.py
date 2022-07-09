@@ -430,7 +430,7 @@ class CloudControlResource(object):
                 patch.append(make_op(k, v_exisiting, v_in, strategy))
             else:
                 # Add patch if key isnt in properties - dont add tags if tags = {} and no tags on resource
-                if k == 'Tags' and v_in == [] and 'tags' not in properties:
+                if k == "Tags" and v_in == [] and "tags" not in properties:
                     continue
                 patch.append(op("add", k, v_in))
         if patch:
