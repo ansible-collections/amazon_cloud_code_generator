@@ -424,7 +424,7 @@ class CloudControlResource(object):
                     ] == []:
                         continue
                 # If purge, then replace old resource
-                if self.module.params.get("purge_{0}".format(k.lower())) == True:
+                if self.module.params.get("purge_{0}".format(k.lower())):
                     strategy = "replace"
                 # Add difference to JSON patch
                 patch.append(make_op(k, v_exisiting, v_in, strategy))
