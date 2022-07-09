@@ -11,6 +11,7 @@ from ansible_collections.amazon.cloud.plugins.module_utils.utils import (
     ansible_dict_to_boto3_tag_list,
     boto3_tag_list_to_ansible_dict,
     diff_dicts,
+    normalize_response,
 )
 
 
@@ -139,3 +140,97 @@ def test_diff_with_addition():
     assert match is False
     assert diff["before"] == {"section4": ["Bar"]}
     assert diff["after"] == {"section5": ["FooBar"], "section4": ["Foo", "Bar"]}
+
+
+def test_normalize_response_single():
+    response = {
+        "ResourceDescription": {
+            "Identifier": "test_one",
+            "Properties": '{"BucketName":"test_one","RegionalDomainName":"test_one.s3.us-east-1.amazonaws.com", \
+            "DomainName":"test_one.s3.amazonaws.com","WebsiteURL":"http://test_one.s3-website-us-east-1.amazonaws.com", \
+            "DualStackDomainName":"test_one.s3.dualstack.us-east-1.amazonaws.com", \
+            "Arn":"arn:aws:s3:::test_one","Tags":[{"Value":"pascalCaseValue","Key":"newPascalCaseKey"}, \
+            {"Value":"CamelCaseValue","Key":"NewCamelCaseKey"},{"Value":"snake_case_value","Key":"new_snake_case_key"}, \
+            {"Value":"Value with spaces","Key":"New Key with Spaces"}]}',
+        }
+    }
+    normalized_response = {
+        "identifier": "test_one",
+        "properties": {
+            "bucket_name": "test_one",
+            "regional_domain_name": "test_one.s3.us-east-1.amazonaws.com",
+            "domain_name": "test_one.s3.amazonaws.com",
+            "website_url": "http://test_one.s3-website-us-east-1.amazonaws.com",
+            "dual_stack_domain_name": "test_one.s3.dualstack.us-east-1.amazonaws.com",
+            "arn": "arn:aws:s3:::test_one",
+            "tags": {
+                "newPascalCaseKey": "pascalCaseValue",
+                "NewCamelCaseKey": "CamelCaseValue",
+                "new_snake_case_key": "snake_case_value",
+                "New Key with Spaces": "Value with spaces",
+            },
+        },
+    }
+    assert normalized_response == normalize_response(response)
+
+
+def test_normalize_response_multiple():
+    response = {
+        "ResourceDescriptions": [
+            {
+                "Identifier": "test_one",
+                "Properties": '{"BucketName":"test_one","RegionalDomainName":"test_one.s3.us-east-1.amazonaws.com", \
+                "DomainName":"test_one.s3.amazonaws.com","WebsiteURL":"http://test_one.s3-website-us-east-1.amazonaws.com", \
+                "DualStackDomainName":"test_one.s3.dualstack.us-east-1.amazonaws.com", \
+                "Arn":"arn:aws:s3:::test_one","Tags":[{"Value":"pascalCaseValue","Key":"newPascalCaseKey"}, \
+                {"Value":"CamelCaseValue","Key":"NewCamelCaseKey"},{"Value":"snake_case_value","Key":"new_snake_case_key"}, \
+                {"Value":"Value with spaces","Key":"New Key with Spaces"}]}',
+            },
+            {
+                "Identifier": "test_two",
+                "Properties": '{"BucketName":"test_two","RegionalDomainName":"test_two.s3.us-east-1.amazonaws.com", \
+                "DomainName":"test_two.s3.amazonaws.com","WebsiteURL":"http://test_two.s3-website-us-east-1.amazonaws.com", \
+                "DualStackDomainName":"test_two.s3.dualstack.us-east-1.amazonaws.com", \
+                "Arn":"arn:aws:s3:::test_two","Tags":[{"Value":"pascalCaseValue","Key":"newPascalCaseKey"}, \
+                {"Value":"CamelCaseValue","Key":"NewCamelCaseKey"},{"Value":"snake_case_value","Key":"new_snake_case_key"}, \
+                {"Value":"Value with spaces","Key":"New Key with Spaces"}]}',
+            },
+        ]
+    }
+    normalized_response = [
+        {
+            "identifier": "test_one",
+            "properties": {
+                "bucket_name": "test_one",
+                "regional_domain_name": "test_one.s3.us-east-1.amazonaws.com",
+                "domain_name": "test_one.s3.amazonaws.com",
+                "website_url": "http://test_one.s3-website-us-east-1.amazonaws.com",
+                "dual_stack_domain_name": "test_one.s3.dualstack.us-east-1.amazonaws.com",
+                "arn": "arn:aws:s3:::test_one",
+                "tags": {
+                    "newPascalCaseKey": "pascalCaseValue",
+                    "NewCamelCaseKey": "CamelCaseValue",
+                    "new_snake_case_key": "snake_case_value",
+                    "New Key with Spaces": "Value with spaces",
+                },
+            },
+        },
+        {
+            "identifier": "test_two",
+            "properties": {
+                "bucket_name": "test_two",
+                "regional_domain_name": "test_two.s3.us-east-1.amazonaws.com",
+                "domain_name": "test_two.s3.amazonaws.com",
+                "website_url": "http://test_two.s3-website-us-east-1.amazonaws.com",
+                "dual_stack_domain_name": "test_two.s3.dualstack.us-east-1.amazonaws.com",
+                "arn": "arn:aws:s3:::test_two",
+                "tags": {
+                    "newPascalCaseKey": "pascalCaseValue",
+                    "NewCamelCaseKey": "CamelCaseValue",
+                    "new_snake_case_key": "snake_case_value",
+                    "New Key with Spaces": "Value with spaces",
+                },
+            },
+        },
+    ]
+    assert normalized_response == normalize_response(response)
