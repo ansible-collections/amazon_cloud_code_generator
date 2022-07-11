@@ -11,6 +11,7 @@ import yaml
 def _task_to_string(task: Dict) -> str:
     a = io.StringIO()
     _yaml = ruamel.yaml.YAML()
+    _yaml.width = 160
     _yaml.dump([task], a)
     a.seek(0)
     return a.read().rstrip()
