@@ -62,5 +62,9 @@ def test_generate_documentation():
     schema = rm.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     added_ins = {"module": "1.0.0"}
-    documentation = g.generate_documentation(module, added_ins, "1.0.0",)
+    documentation = g.generate_documentation(
+        module,
+        added_ins,
+        "1.0.0",
+    )
     assert documentation == expected_content

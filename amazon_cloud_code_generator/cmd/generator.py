@@ -126,10 +126,10 @@ class Description:
         my_string = re.sub(r"TRUE", "C(True)", my_string)
 
         # Cleanup some quotes
-        my_string = re.sub("[\"\'\\`]", "", my_string)
+        my_string = re.sub("[\"'\\`]", "", my_string)
 
-        if not my_string.endswith('.'):
-            my_string = my_string+'.'
+        if not my_string.endswith("."):
+            my_string = my_string + "."
 
         return my_string
 
