@@ -121,14 +121,15 @@ class Description:
         my_string = find_match("values are:", my_string)
         my_string = find_match("following properties:", my_string)
 
-        # Substitute one or more white space which is at beginning and end of the string with an empty string
+        # Substitute one or more white space at beginning and end of the string with an empty string
         my_string = re.sub(r"^\s+|\s+$", "", my_string)
-
         my_string = re.sub(r"TRUE", "C(True)", my_string)
 
         # Cleanup some quotes
-        my_string = my_string.replace('"', "")
-        my_string = my_string.replace("'", "")
+        my_string = re.sub("[\"\'\\`]", "", my_string)
+
+        if not my_string.endswith('.'):
+            my_string = my_string+'.'
 
         return my_string
 

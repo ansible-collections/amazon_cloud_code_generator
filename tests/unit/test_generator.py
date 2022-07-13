@@ -18,9 +18,9 @@ expected_content = resources("fixtures/expected_content.json")
 
 
 def test_Description_normalize():
-    assert g.Description.normalize("a") == ["a"]
+    assert g.Description.normalize("a") == ["a."]
     assert g.Description.normalize("") == []
-    assert g.Description.normalize("CloudWatch") == ["CloudWatch"]
+    assert g.Description.normalize("CloudWatch") == ["CloudWatch."]
     assert g.Description.normalize(
         "The Amazon Resource Name (ARN) of the Amazon SQS queue to which Amazon S3 publishes a message."
     ) == [
@@ -28,6 +28,11 @@ def test_Description_normalize():
     ]
     assert g.Description.normalize(
         "Setting this element to TRUE causes Amazon S3 to reject calls to PUT Bucket policy."
+    ) == [
+        "Setting this element to C(True) causes Amazon S3 to reject calls to PUT Bucket policy."
+    ]
+    assert g.Description.normalize(
+        "Setting this element to TRUE causes Amazon S3 to reject calls to PUT Bucket policy"
     ) == [
         "Setting this element to C(True) causes Amazon S3 to reject calls to PUT Bucket policy."
     ]
@@ -43,6 +48,11 @@ def test_Description_normalize():
     ]
     assert g.Description.normalize(
         "You must specify at least one of the following properties: Option, OptionOne and AnotherSecondOption."
+    ) == [
+        "You must specify at least one of the following properties: I(option), I(option_one) and I(another_second_option)."
+    ]
+    assert g.Description.normalize(
+        "You must specify at least one of the following properties: ``Option``, ``OptionOne`` and ``AnotherSecondOption``."
     ) == [
         "You must specify at least one of the following properties: I(option), I(option_one) and I(another_second_option)."
     ]
