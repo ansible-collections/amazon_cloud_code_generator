@@ -35,6 +35,7 @@ __metaclass__ = type
 
 
 import json
+import re
 import traceback
 from itertools import count
 from typing import Iterable, List, Dict, Optional, Union
@@ -99,17 +100,13 @@ class CloudControlResource(object):
                 RequestToken=request_token,
                 WaiterConfig=self._waiter_config,
             )
-        except botocore.exceptions.WaiterError as e:
-            self.module.fail_json_aws(
-                e,
-                msg="Resource request failed to reach successful state",
+        except Exception as e:
+            exception = re.sub(
+                r"\(.*?\)|\[.*?\]", "", e.last_response["ProgressEvent"]["StatusMessage"]
             )
-        except (
-            botocore.exceptions.BotoCoreError,
-            botocore.exceptions.ClientError,
-        ) as e:
             self.module.fail_json_aws(
-                e, msg="Unable to wait for the resource request to become successful"
+                exception,
+                msg="Resource request failed to reach successful state",
             )
 
     @to_sync

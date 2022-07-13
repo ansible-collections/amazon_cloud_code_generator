@@ -48,6 +48,7 @@
   assert:
     that:
       - _result_create_non_existent_cluster is failed
+      - "'No cluster found for name: fake_cluster.' in _result_create_non_existent_cluster.msg"
 
 - name: Delete an as yet non-existent Fargate Profile
   amazon.cloud.eks_fargate_profile:
@@ -84,6 +85,7 @@
   assert:
     that:
       - _result_create_fp is failed
+      - "'provided in Fargate Profile is not a private subnet' in _result_create_fp.msg"
 
 - name: Create Fargate Profile a with wait (check mode)
   amazon.cloud.eks_fargate_profile:
