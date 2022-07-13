@@ -35,7 +35,6 @@ __metaclass__ = type
 
 
 import json
-import re
 import traceback
 from itertools import count
 from typing import Iterable, List, Dict, Optional, Union
@@ -101,11 +100,8 @@ class CloudControlResource(object):
                 WaiterConfig=self._waiter_config,
             )
         except Exception as e:
-            exception = re.sub(
-                r"\(.*?\)|\[.*?\]", "", e.last_response["ProgressEvent"]["StatusMessage"]
-            )
             self.module.fail_json_aws(
-                exception,
+                e.last_response["ProgressEvent"]["StatusMessage"],
                 msg="Resource request failed to reach successful state",
             )
 
