@@ -99,10 +99,17 @@ class CloudControlResource(object):
                 RequestToken=request_token,
                 WaiterConfig=self._waiter_config,
             )
-        except Exception as e:
+        except botocore.exceptions.WaiterError as e:
             self.module.fail_json_aws(
                 e.last_response["ProgressEvent"]["StatusMessage"],
                 msg="Resource request failed to reach successful state",
+            )
+        except (
+            botocore.exceptions.BotoCoreError,
+            botocore.exceptions.ClientError,
+        ) as e:
+            self.module.fail_json_aws(
+                e, msg="Unable to wait for the resource request to become successful"
             )
 
     @to_sync
