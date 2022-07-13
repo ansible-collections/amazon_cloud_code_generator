@@ -118,6 +118,8 @@
     wait: true
     tags: "{{ tags }}"
   register: _result_create_fp
+  tags:
+    - docs
 
 - name: Assert Fargate Profile a is created
   assert:
@@ -171,6 +173,8 @@
     state: list
     cluster_name: "{{ eks_cluster_name }}"
   register: _result_list_fp
+  tags:
+    - docs
 
 - name: Update tags in Fargate Profile a with wait (check mode)
   amazon.cloud.eks_fargate_profile:
@@ -188,6 +192,8 @@
       test: foo
   check_mode: True
   register: _result_update_tags_fp
+  tags:
+    - docs
 
 - name: Assert result is changed (check mode)
   assert:
@@ -362,6 +368,8 @@
     wait: true
     wait_timeout: 900
   register: _result_delete_fp
+  tags:
+    - docs
 
 - name: Assert Fargate Profile a is deleted
   assert:

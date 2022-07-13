@@ -99,6 +99,8 @@
       Name: "{{ _resource_prefix }}-eks-cluster"
     wait_timeout: 900
   register: _result_create_cluster
+  tags:
+    - docs
 
 - name: Check that EKS cluster was created
   assert:
@@ -110,8 +112,12 @@
     name: "{{ eks_cluster_name }}"
     state: describe
   register: _result_get_cluster
+  tags:
+    - docs
 
 - name: List EKS clusters
   amazon.cloud.eks_cluster:
     state: list
   register: _result_list_clusters
+  tags:
+    - docs

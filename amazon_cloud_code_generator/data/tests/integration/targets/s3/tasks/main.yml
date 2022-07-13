@@ -37,6 +37,8 @@
         bucket_name: "{{ bucket_name }}"
         state: present
       register: output
+      tags:
+        - docs
     
     - assert:
         that:
@@ -48,10 +50,19 @@
         state: describe
         bucket_name: "{{ output.result.identifier }}"
       register: _result
-    
+      tags:
+        - docs
+ 
     - assert:
         that:
             - _result is success
+    
+    - name: List S3 buckets
+      amazon.cloud.s3_bucket:
+        state: list
+      register: _result
+      tags:
+        - docs
     
     - name: Create S3 bucket - idempotence
       amazon.cloud.s3_bucket:
@@ -78,7 +89,7 @@
 
     - name: Update S3 bucket public access block configuration and tags - check_mode
       amazon.cloud.s3_bucket:
-        bucket_name: "{{ output.result.identifier }}"
+        bucket_name: "{{ bucket_name }}"
         state: present
         public_access_block_configuration:
           block_public_acls: false
@@ -107,6 +118,8 @@
         tags:
           mykey: "myval"
       register: _result
+      tags:
+        - docs
     
     - assert:
         that:
@@ -250,3 +263,5 @@
         state: absent
         bucket_name: "{{ bucket_name }}"
       ignore_errors: true
+      tags:
+        - docs
