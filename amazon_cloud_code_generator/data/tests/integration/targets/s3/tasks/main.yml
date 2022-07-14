@@ -19,19 +19,19 @@
         state: absent
       register: output
       ignore_errors: true
-    
+
     - name: Create S3 bucket - check_mode
       amazon.cloud.s3_bucket:
         bucket_name: "{{ bucket_name }}"
         state: present
       check_mode: true
       register: output
-    
+
     - assert:
         that:
             - output is success
             - output is changed
-  
+
     - name: Create S3 bucket
       amazon.cloud.s3_bucket:
         bucket_name: "{{ bucket_name }}"
@@ -39,12 +39,12 @@
       register: output
       tags:
         - docs
-    
+
     - assert:
         that:
             - output is success
             - output is changed
-    
+
     - name: Describe S3 bucket
       amazon.cloud.s3_bucket:
         state: describe
@@ -52,7 +52,7 @@
       register: _result
       tags:
         - docs
- 
+    
     - assert:
         that:
             - _result is success
@@ -63,31 +63,35 @@
       register: _result
       tags:
         - docs
-    
-    - name: Create S3 bucket - idempotence
-      amazon.cloud.s3_bucket:
-        bucket_name: "{{ output.result.identifier }}"
-        state: present
-      register: _result
-    
+
     - assert:
         that:
             - _result is success
-            - _result is not changed
-    
+
     - name: Create S3 bucket - idempotence
       amazon.cloud.s3_bucket:
         bucket_name: "{{ output.result.identifier }}"
         state: present
-      check_mode: true
       register: _result
-    
+
     - assert:
         that:
             - _result is success
             - _result is not changed
 
-    - name: Update S3 bucket public access block configuration and tags - check_mode
+    - name: Create S3 bucket (check_mode) - idempotence
+      amazon.cloud.s3_bucket:
+        bucket_name: "{{ output.result.identifier }}"
+        state: present
+      check_mode: true
+      register: _result
+
+    - assert:
+        that:
+            - _result is success
+            - _result is not changed
+
+    - name: Update S3 bucket public access block configuration and tags - check_mode (diff=true)
       amazon.cloud.s3_bucket:
         bucket_name: "{{ bucket_name }}"
         state: present
@@ -98,15 +102,17 @@
           restrict_public_buckets: false
         tags:
           mykey: "myval"
+      diff: true
       check_mode: true
       register: _result
-    
+
     - assert:
         that:
             - _result is success
             - _result is changed
-  
-    - name: Update S3 bucket public access block configuration and tags
+            - "'diff' in _result"
+
+    - name: Update S3 bucket public access block configuration and tags (diff=true)
       amazon.cloud.s3_bucket:
         bucket_name: "{{ output.result.identifier }}"
         state: present
@@ -117,6 +123,7 @@
           restrict_public_buckets: false
         tags:
           mykey: "myval"
+      diff: true
       register: _result
       tags:
         - docs
@@ -125,8 +132,11 @@
         that:
             - _result is success
             - _result is changed
-    
-    - name: Update S3 bucket public access block configuration and tags - idempotence
+            - "'diff' in _result"
+            - _result.diff.after != {}
+            - _result.diff.before != {}
+
+    - name: Update S3 bucket public access block configuration and tags - idempotence (diff=true)
       amazon.cloud.s3_bucket:
         bucket_name: "{{ output.result.identifier }}"
         state: present
@@ -137,13 +147,16 @@
           restrict_public_buckets: false
         tags:
           mykey: "myval"
+      diff: true
       register: _result
-    
+
     - assert:
         that:
             - _result is success
             - _result is not changed
-    
+            - "'diff' in _result"
+            - _result.diff == {}
+
     - name: Update S3 bucket public access block configuration (block_public_policy=true)
       amazon.cloud.s3_bucket:
         bucket_name: "{{ output.result.identifier }}"
@@ -154,12 +167,12 @@
           ignore_public_acls: false
           restrict_public_buckets: false
       register: _result
-    
+
     - assert:
         that:
             - _result is success
             - _result is changed
-    
+
     - name: Update S3 bucket public access block configuration (block_public_policy=false, force=true) - check_mode
       amazon.cloud.s3_bucket:
         bucket_name: "{{ output.result.identifier }}"
@@ -172,12 +185,12 @@
         force: true
       check_mode: true
       register: _result
-    
+
     - assert:
         that:
             - _result is success
             - _result is changed
-    
+
     - name: Update S3 bucket public access block configuration (block_public_policy=false, force=true)
       amazon.cloud.s3_bucket:
         bucket_name: "{{ output.result.identifier }}"
@@ -189,12 +202,12 @@
           restrict_public_buckets: false
         force: true
       register: _result
-    
+
     - assert:
         that:
             - _result is success
             - _result is changed
-    
+
     - name: Update S3 bucket public access block configuration (block_public_policy=false, force=true) - idempotency
       amazon.cloud.s3_bucket:
         bucket_name: "{{ output.result.identifier }}"
@@ -206,7 +219,7 @@
           restrict_public_buckets: false
         force: true
       register: _result
-    
+
     - assert:
         that:
             - _result is success
@@ -218,41 +231,41 @@
         state: absent
       check_mode: true
       register: _result
-    
+
     - assert:
         that:
             - _result is success
             - _result is changed
-  
+
     - name: Delete S3 bucket
       amazon.cloud.s3_bucket:
         bucket_name: "{{ output.result.identifier }}"
         state: absent
       register: _result
-    
+
     - assert:
         that:
             - _result is success
             - _result is changed
-    
+
     - name: Delete S3 bucket - idempotence
       amazon.cloud.s3_bucket:
         bucket_name: "{{ output.result.identifier }}"
         state: absent
       register: _result
-    
+
     - assert:
         that:
             - _result is success
             - _result is not changed
-    
+
     - name: Delete S3 bucket (check_mode) - idempotence
       amazon.cloud.s3_bucket:
         bucket_name: "{{ output.result.identifier }}"
         state: absent
       check_mode: true
       register: _result
-    
+
     - assert:
         that:
             - _result is success
