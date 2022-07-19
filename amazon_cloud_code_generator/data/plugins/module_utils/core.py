@@ -479,10 +479,10 @@ class CloudControlResource(object):
                 ) as e:
                     self.module.fail_json_aws(e, msg="Failed to update resource")
 
-                # Always wait to update to ensure correct data returned to user
-                self.wait_until_resource_request_success(
-                    response["ProgressEvent"]["RequestToken"]
-                )
+                if self.module.params.get("wait"):
+                    self.wait_until_resource_request_success(
+                        response["ProgressEvent"]["RequestToken"]
+                    )
             results["changed"] = True
 
         if self.module._diff:
