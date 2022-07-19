@@ -45,8 +45,6 @@ def _jsonify(data: Dict) -> Dict:
     identifier = data.get("Identifier", None)
     # Convert the Resource Properties from a str back to json
     properties = json.loads(data.get("Properties", None))
-    if properties and "Tags" in properties:
-        properties["tags"] = boto3_tag_list_to_ansible_dict(properties["Tags"])
     data = {"identifier": identifier, "properties": properties}
     return data
 

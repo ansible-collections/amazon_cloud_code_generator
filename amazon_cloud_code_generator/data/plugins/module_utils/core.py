@@ -409,6 +409,7 @@ class CloudControlResource(object):
 
         # Ignore createOnlyProperties that can be set only during resource creation
         params = scrub_keys(params_to_set, create_only_params)
+
         patch = JsonPatch()
         for k, v_in in params.items():
             strategy = "merge"
@@ -461,6 +462,7 @@ class CloudControlResource(object):
                         )
 
                 self.wait_for_in_progress_requests(in_progress_requests, identifier)
+
                 try:
                     response = self.client.update_resource(
                         TypeName=type_name,
