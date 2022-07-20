@@ -1,7 +1,17 @@
 import re
 import json
 import functools
+import traceback
 from typing import Iterable, List, Dict, Union
+
+JSON_PATCH_IMPORT_ERR = None
+try:
+    import jsonpatch
+
+    HAS_JSON_PATCH = True
+except ImportError:
+    HAS_JSON_PATCH = False
+    JSON_PATCH_IMPORT_ERR = traceback.format_exc()
 
 from ansible.module_utils.common.dict_transformations import (
     camel_dict_to_snake_dict,
@@ -10,6 +20,7 @@ from ansible.module_utils.common.dict_transformations import (
 )
 
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import missing_required_lib
 
 
 def to_async(fn):
@@ -199,6 +210,25 @@ def diff_dicts(existing: Dict, new: Dict) -> Union[bool, Dict]:
     result["after"] = diff[1]
 
     return False, result
+
+
+def json_patch(existing, patch):
+    if not HAS_JSON_PATCH:
+        error = {
+            "msg": missing_required_lib("jsonpatch"),
+            "exception": JSON_PATCH_IMPORT_ERR,
+        }
+        return None, error
+    try:
+        patch = jsonpatch.JsonPatch(patch)
+        patched = patch.apply(existing)
+        return patched, None
+    except jsonpatch.InvalidJsonPatch as e:
+        error = {"msg": "Invalid JSON patch", "exception": e}
+        return None, error
+    except jsonpatch.JsonPatchConflict as e:
+        error = {"msg": "Patch could not be applied due to a conflict", "exception": e}
+        return None, error
 
 
 class JsonPatch(list):

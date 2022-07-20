@@ -52,6 +52,7 @@ from .utils import (
     snake_dict_to_camel_dict,
     diff_dicts,
     snake_to_camel,
+    json_patch,
 )
 
 from ansible_collections.amazon.cloud.plugins.module_utils.waiters import get_waiter
@@ -406,6 +407,7 @@ class CloudControlResource(object):
         type_name = resource["TypeName"]
         properties = json.loads(resource["ResourceDescription"]["Properties"])
         results: Dict = {"changed": False, "result": []}
+        obj = None
 
         # Ignore createOnlyProperties that can be set only during resource creation
         params = scrub_keys(params_to_set, create_only_params)
@@ -422,61 +424,59 @@ class CloudControlResource(object):
                     strategy = "replace"
                 patch.append(make_op(k, properties[k], v, strategy))
 
-        if patch:
-            if "update" not in handlers:
-                self.module.exit_json(
-                    **results, msg=f"Resource type {type_name} cannot be updated."
+        if self.module.check_mode:
+            obj, error = json_patch(properties, patch)
+            if error:
+                self.module.fail_json(**error)
+        else:
+            in_progress_requests = self.check_in_progress_requests(
+                type_name, identifier
+            )
+            if self.module.params.get("force"):
+                self.module.warn(
+                    f"There is one or more IN PROGRESS or PENDING resource requests on {identifier} that will be cancelled."
                 )
-
-            if not self.module.check_mode:
-                in_progress_requests = self.check_in_progress_requests(
-                    type_name, identifier
-                )
-                if self.module.params.get("force"):
-                    self.module.warn(
-                        f"There is one or more IN PROGRESS or PENDING resource requests on {identifier} that will be cancelled."
-                    )
-                    try:
-                        for e in in_progress_requests:
-                            self.client.cancel_resource_request(
-                                RequestToken=e["RequestToken"]
-                            )
-                    except (
-                        botocore.exceptions.BotoCoreError,
-                        botocore.exceptions.ClientError,
-                    ) as e:
-                        self.module.fail_json_aws(
-                            e, msg="Failed to cancel resource request"
-                        )
-
-                self.wait_for_in_progress_requests(in_progress_requests, identifier)
-
                 try:
-                    response = self.client.update_resource(
-                        TypeName=type_name,
-                        Identifier=identifier,
-                        PatchDocument=str(patch),
-                    )
-                except self.client.exceptions.ResourceNotFoundException:
-                    # If there is an IN PROGRESS delete opration on the resource and
-                    # the resource is deleted before (so it can't be updated)
-                    return results
+                    for e in in_progress_requests:
+                        self.client.cancel_resource_request(
+                            RequestToken=e["RequestToken"]
+                        )
                 except (
                     botocore.exceptions.BotoCoreError,
                     botocore.exceptions.ClientError,
                 ) as e:
-                    self.module.fail_json_aws(e, msg="Failed to update resource")
-
-                if self.module.params.get("wait"):
-                    self.wait_until_resource_request_success(
-                        response["ProgressEvent"]["RequestToken"]
+                    self.module.fail_json_aws(
+                        e, msg="Failed to cancel resource request"
                     )
-            results["changed"] = True
 
-        if self.module._diff:
-            match, diffs = diff_dicts(
-                properties, json.loads(response["ProgressEvent"]["ResourceModel"])
+            self.wait_for_in_progress_requests(in_progress_requests, identifier)
+
+            try:
+                response = self.client.update_resource(
+                    TypeName=type_name,
+                    Identifier=identifier,
+                    PatchDocument=str(patch),
+                )
+                obj = json.loads(response["ProgressEvent"]["ResourceModel"])
+            except self.client.exceptions.ResourceNotFoundException:
+                # If there is an IN PROGRESS delete opration on the resource and
+                # the resource is deleted before (so it can't be updated)
+                return results
+            except (
+                botocore.exceptions.BotoCoreError,
+                botocore.exceptions.ClientError,
+            ) as e:
+                self.module.fail_json_aws(e, msg="Failed to update resource")
+
+        if not self.module.check_mode and self.module.params.get("wait"):
+            self.wait_until_resource_request_success(
+                response["ProgressEvent"]["RequestToken"]
             )
+
+        match, diffs = diff_dicts(properties, obj)
+
+        results["changed"] = not match
+        if self.module._diff:
             results["diff"] = diffs
 
         return results
