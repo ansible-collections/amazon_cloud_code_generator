@@ -258,9 +258,7 @@ class CloudControlResource(object):
             resource = self.client.get_resource(
                 TypeName=type_name, Identifier=json.dumps(identifier)
             )
-            results = self.update_resource(
-                resource, params, create_only_params, handlers
-            )
+            results = self.update_resource(resource, params, create_only_params)
         except self.client.exceptions.ResourceNotFoundException:
             results["changed"] |= self.create_resource(type_name, params)
         except (
@@ -410,12 +408,38 @@ class CloudControlResource(object):
                 patch.append(make_op(k, properties[k], v, strategy))
         return patch
 
+    def ensure_request_status(self, request_token: str) -> bool:
+        # Wait until reource request becomes IN_PROGRESS
+        response: Dict = {}
+        wait_for_request: bool = False
+
+        for i in count():
+            if response and response["ProgressEvent"]["OperationStatus"] not in (
+                "IN_PROGRESS",
+                "SUCCESS",
+            ):
+                try:
+                    response = self.client.get_resource_request_status(
+                        RequestToken=request_token
+                    )
+                except (
+                    botocore.exceptions.BotoCoreError,
+                    botocore.exceptions.ClientError,
+                ) as e:
+                    self.module.fail_json_aws(
+                        e, msg="Failed to get resource request status"
+                    )
+                wait_for_request = True
+            else:
+                break
+
+        return wait_for_request
+
     def update_resource(
         self,
         resource: Dict,
         params_to_set: Dict,
         create_only_params: List,
-        handlers: Dict,
     ) -> bool:
         identifier = resource["ResourceDescription"]["Identifier"]
         type_name = resource["TypeName"]
@@ -428,8 +452,26 @@ class CloudControlResource(object):
 
         in_progress_requests = self.check_in_progress_requests(type_name, identifier)
 
-        if in_progress_requests:
-            self.wait_for_in_progress_requests(in_progress_requests, identifier)
+        if not self.module.check_mode:
+            if self.module.params.get("force"):
+                self.module.warn(
+                    f"There is one or more IN PROGRESS or PENDING resource requests on {identifier} that will be cancelled."
+                )
+                try:
+                    for e in in_progress_requests:
+                        self.client.cancel_resource_request(
+                            RequestToken=e["RequestToken"]
+                        )
+                except (
+                    botocore.exceptions.BotoCoreError,
+                    botocore.exceptions.ClientError,
+                ) as e:
+                    self.module.fail_json_aws(
+                        e, msg="Failed to cancel resource request"
+                    )
+            else:
+                # Wait for IN PROGRESS or PENDING resource requests to avoid concurrency exceptions
+                self.wait_for_in_progress_requests(in_progress_requests, identifier)
 
             # Retrieve updated information on the resource
             # When a resource request is PENDING, the resource properties does not reflect the latest update
@@ -455,23 +497,6 @@ class CloudControlResource(object):
             if error:
                 self.module.fail_json(**error)
         else:
-            if self.module.params.get("force"):
-                self.module.warn(
-                    f"There is one or more IN PROGRESS or PENDING resource requests on {identifier} that will be cancelled."
-                )
-                try:
-                    for e in in_progress_requests:
-                        self.client.cancel_resource_request(
-                            RequestToken=e["RequestToken"]
-                        )
-                except (
-                    botocore.exceptions.BotoCoreError,
-                    botocore.exceptions.ClientError,
-                ) as e:
-                    self.module.fail_json_aws(
-                        e, msg="Failed to cancel resource request"
-                    )
-
             try:
                 response = self.client.update_resource(
                     TypeName=type_name,
@@ -484,6 +509,19 @@ class CloudControlResource(object):
                 botocore.exceptions.ClientError,
             ) as e:
                 self.module.fail_json_aws(e, msg="Failed to update resource")
+
+            # Ensure the request is at least IN_PROGRESS to return updated information
+            if self.ensure_request_status(response["ProgressEvent"]["RequestToken"]):
+                try:
+                    resource = self.client.get_resource(
+                        TypeName=type_name, Identifier=identifier
+                    )
+                    obj = json.loads(resource["ResourceDescription"]["Properties"])
+                except (
+                    botocore.exceptions.BotoCoreError,
+                    botocore.exceptions.ClientError,
+                ) as e:
+                    self.module.fail_json_aws(e, msg="Failed to retrieve resource")
 
         if not self.module.check_mode and self.module.params.get("wait"):
             self.wait_until_resource_request_success(
