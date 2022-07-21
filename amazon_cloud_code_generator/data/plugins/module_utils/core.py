@@ -325,7 +325,7 @@ class CloudControlResource(object):
         # Dont warn if nothing to wait on
         if in_progress_requests:
             self.module.warn(
-                f"There is one or more IN PROGRESS operations on {identifier}. Wait until there are no more IN PROGRESS operations before proceding."
+                f"There is an IN PROGRESS or PENDING operation on {identifier}. Wait until it completes before proceding."
             )
             [
                 self.wait_until_resource_request_success(e["RequestToken"])
@@ -381,7 +381,7 @@ class CloudControlResource(object):
                 TypeName=type_name, Identifier=identifier
             )
         except self.client.exceptions.ResourceNotFoundException:
-            # If the resource has been deleted by an IN PROGRESS delete operation
+            # If the resource has been deleted by an IN PROGRESS or PENDING delete operation
             return changed
         except (
             botocore.exceptions.BotoCoreError,
@@ -395,6 +395,20 @@ class CloudControlResource(object):
             )
 
         return changed
+
+    def get_patch(self, params, properties):
+        patch = JsonPatch()
+        for k, v in params.items():
+            strategy = "merge"
+            if v == properties.get(k):
+                continue
+            if k not in properties:
+                patch.append(op("add", k, v))
+            else:
+                if self.module.params.get("purge_{0}".format(k.lower())):
+                    strategy = "replace"
+                patch.append(make_op(k, properties[k], v, strategy))
+        return patch
 
     def update_resource(
         self,
@@ -412,26 +426,35 @@ class CloudControlResource(object):
         # Ignore createOnlyProperties that can be set only during resource creation
         params = scrub_keys(params_to_set, create_only_params)
 
-        patch = JsonPatch()
-        for k, v in params.items():
-            strategy = "merge"
-            if v == properties.get(k):
-                continue
-            if k not in properties:
-                patch.append(op("add", k, v))
-            else:
-                if self.module.params.get("purge_{0}".format(k.lower())):
-                    strategy = "replace"
-                patch.append(make_op(k, properties[k], v, strategy))
+        in_progress_requests = self.check_in_progress_requests(type_name, identifier)
+
+        if in_progress_requests:
+            self.wait_for_in_progress_requests(in_progress_requests, identifier)
+
+            # Retrieve updated information on the resource
+            # When a resource request is PENDING, the resource properties does not reflect the latest update
+            try:
+                resource = self.client.get_resource(
+                    TypeName=type_name, Identifier=identifier
+                )
+                properties = json.loads(resource["ResourceDescription"]["Properties"])
+            except self.client.exceptions.ResourceNotFoundException:
+                # If there is an IN PROGRESS or PENDING delete opration on the resource and
+                # the resource is deleted before (so it can't be updated)
+                return results
+            except (
+                botocore.exceptions.BotoCoreError,
+                botocore.exceptions.ClientError,
+            ) as e:
+                self.module.fail_json_aws(e, msg="Failed to retrieve resource")
+
+        patch = self.get_patch(params, properties)
 
         if self.module.check_mode:
             obj, error = json_patch(properties, patch)
             if error:
                 self.module.fail_json(**error)
         else:
-            in_progress_requests = self.check_in_progress_requests(
-                type_name, identifier
-            )
             if self.module.params.get("force"):
                 self.module.warn(
                     f"There is one or more IN PROGRESS or PENDING resource requests on {identifier} that will be cancelled."
@@ -449,8 +472,6 @@ class CloudControlResource(object):
                         e, msg="Failed to cancel resource request"
                     )
 
-            self.wait_for_in_progress_requests(in_progress_requests, identifier)
-
             try:
                 response = self.client.update_resource(
                     TypeName=type_name,
@@ -458,10 +479,6 @@ class CloudControlResource(object):
                     PatchDocument=str(patch),
                 )
                 obj = json.loads(response["ProgressEvent"]["ResourceModel"])
-            except self.client.exceptions.ResourceNotFoundException:
-                # If there is an IN PROGRESS delete opration on the resource and
-                # the resource is deleted before (so it can't be updated)
-                return results
             except (
                 botocore.exceptions.BotoCoreError,
                 botocore.exceptions.ClientError,
