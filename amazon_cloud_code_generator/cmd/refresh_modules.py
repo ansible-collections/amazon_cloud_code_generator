@@ -122,12 +122,22 @@ def generate_params(definitions: Iterable) -> str:
     return params
 
 
-def get_mutually_exclusive(schema: Dict) -> List:
+def gen_mutually_exclusive(schema: Dict) -> List:
     primary_idenfifier = schema.get("primaryIdentifier", [])
     entries: List = []
 
     if len(primary_idenfifier) > 1:
-        entries.append([primary_idenfifier, "identifier"])
+       entries.append([tuple(primary_idenfifier), "identifier"])
+
+    return entries
+
+
+def gen_required_together(schema: Dict) -> List:
+    primary_idenfifier = schema.get("primaryIdentifier", [])
+    entries: List = []
+
+    if len(primary_idenfifier) > 1:
+        entries.append(primary_idenfifier)
 
     return entries
 
@@ -138,16 +148,21 @@ def gen_required_if(schema: Dict) -> List:
     entries: List = []
     states = ["absent", "get"]
 
-    entries.append(
-        ["state", "present", list(set([*primary_idenfifier, *required])), True]
-    )
-    [
-        entries.append(["state", state, list(set(primary_idenfifier)), True])
-        for state in states
-    ]
+    if len(primary_idenfifier) == 1:
+        entries.append(
+            ["state", "present", list(set([*primary_idenfifier, *required])), True]
+        )
+    
+        [
+            entries.append(["state", state, list(set(primary_idenfifier)), True])
+            for state in states
+        ]
     # For compound primary identifiers consisting of multiple resource properties strung together,
     # use the property values in the order that they are specified in the primary identifier definition
     if len(primary_idenfifier) > 1:
+        entries.append(
+            ["state", "present", list(set([*required])), True]
+        )
         entries.append(["state", "list", list(set(primary_idenfifier[:-1])), True])
 
     return entries
@@ -286,7 +301,8 @@ class AnsibleModule:
             params=indent(generate_params(documentation["options"]), 4),
             primary_identifier=self.schema["primaryIdentifier"],
             required_if=gen_required_if(self.schema),
-            mutually_exclusive=get_mutually_exclusive(self.schema),
+            mutually_exclusive=gen_mutually_exclusive(self.schema),
+            required_together=gen_required_together(self.schema),
             create_only_properties=self.schema.get("createOnlyProperties", {}),
             handlers=list(self.schema.get("handlers", {}).keys()),
         )
