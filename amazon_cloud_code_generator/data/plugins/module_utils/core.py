@@ -267,7 +267,9 @@ class CloudControlResource(object):
             )
         except self.client.exceptions.ResourceNotFoundException:
             if self.module.params.get("identifier"):
-                self.module.fail_json(f"You must specify both {*primary_identifier, } to create a new resource. Option identifier must only be used to manipulate an existing resource.")
+                self.module.fail_json(
+                    f"You must specify both {*primary_identifier, } to create a new resource. Option identifier must only be used to manipulate an existing resource."
+                )
             results["changed"] |= self.create_resource(type_name, params)
         except (
             botocore.exceptions.BotoCoreError,
