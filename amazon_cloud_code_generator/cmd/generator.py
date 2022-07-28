@@ -353,6 +353,19 @@ def generate_documentation(
             "default": True,
         }
 
+    if len(docs.primary_identifier) > 1:
+        # If a resource has more than one primary identifier, the user can decide to either
+        # specify all the primary identifiers or use the identifier parameter as a string
+        # consisting of the multiple identifiers strung together
+        # https://docs.aws.amazon.com/cloudcontrolapi/latest/userguide/resource-identifier.html
+        documentation["options"]["identifier"] = {
+            "description": [
+                "For compound primary identifiers, to specify the primary identifier as a string, list each in the order that they are specified in the identifier list definition, separated by |.",
+                "For more details, visit U(https://docs.aws.amazon.com/cloudcontrolapi/latest/userguide/resource-identifier.html).",
+            ],
+            "type": "str",
+        }
+
     module_from_config = get_module_from_config(module_name)
     if module_from_config and "documentation" in module_from_config:
         for k, v in module_from_config["documentation"].items():
