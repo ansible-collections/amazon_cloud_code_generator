@@ -127,17 +127,7 @@ def gen_mutually_exclusive(schema: Dict) -> List:
     entries: List = []
 
     if len(primary_idenfifier) > 1:
-       entries.append([tuple(primary_idenfifier), "identifier"])
-
-    return entries
-
-
-def gen_required_together(schema: Dict) -> List:
-    primary_idenfifier = schema.get("primaryIdentifier", [])
-    entries: List = []
-
-    if len(primary_idenfifier) > 1:
-        entries.append(primary_idenfifier)
+        entries.append([tuple(primary_idenfifier), "identifier"])
 
     return entries
 
@@ -148,24 +138,35 @@ def gen_required_if(schema: Dict) -> List:
     entries: List = []
     states = ["absent", "get"]
 
-    if len(primary_idenfifier) == 1:
-        entries.append(
-            ["state", "present", list(set([*primary_idenfifier, *required])), True]
-        )
-    
-        [
-            entries.append(["state", state, list(set(primary_idenfifier)), True])
-            for state in states
-        ]
+    entries.append(
+        ["state", "present", list(set([*primary_idenfifier, *required])), True]
+    )
+
+    [
+        entries.append(["state", state, list(set(primary_idenfifier)), True])
+        for state in states
+    ]
     # For compound primary identifiers consisting of multiple resource properties strung together,
     # use the property values in the order that they are specified in the primary identifier definition
     if len(primary_idenfifier) > 1:
-        entries.append(
-            ["state", "present", list(set([*required])), True]
-        )
         entries.append(["state", "list", list(set(primary_idenfifier[:-1])), True])
 
     return entries
+
+
+def ensure_all_identifiers_defined(schema: Dict) -> str:
+    primary_idenfifier = schema.get("primaryIdentifier", [])
+    new_content: str = "if state in ('present', 'absent', 'get', 'describe') and module.params.get('identifier') is None:\n"
+    new_content += 8 * " "
+    new_content += f"if not  module.params.get('{primary_idenfifier[0]}')" + " ".join(
+        map(lambda x: f" or not module.params.get('{x}')", primary_idenfifier[1:])
+    )
+    new_content += ":\n" + 12 * " "
+    new_content += (
+        "module.fail_json(f'You must specify both {*identifier, } identifiers.')\n"
+    )
+
+    return new_content
 
 
 def format_documentation(documentation: Iterable) -> str:
@@ -302,7 +303,9 @@ class AnsibleModule:
             primary_identifier=self.schema["primaryIdentifier"],
             required_if=gen_required_if(self.schema),
             mutually_exclusive=gen_mutually_exclusive(self.schema),
-            required_together=gen_required_together(self.schema),
+            ensure_all_identifiers_defined=ensure_all_identifiers_defined(self.schema)
+            if len(self.schema["primaryIdentifier"]) > 1
+            else "",
             create_only_properties=self.schema.get("createOnlyProperties", {}),
             handlers=list(self.schema.get("handlers", {}).keys()),
         )
