@@ -143,21 +143,18 @@ def gen_required_if(schema: Dict) -> List:
     # For compound primary identifiers consisting of multiple resource properties strung together,
     # use the property values in the order that they are specified in the primary identifier definition
     if len(primary_idenfifier) > 1:
-        entries.append(["state", "list", list(set(primary_idenfifier[:-1])), True])
+        entries.append(["state", "list", primary_idenfifier[:-1], True])
         _primary_idenfifier.append("identifier")
 
     entries.append(
         [
             "state",
             "present",
-            list(set([*_primary_idenfifier, *required])),
+            [*_primary_idenfifier, *required],
             True,
         ]
     )
-    [
-        entries.append(["state", state, list(_primary_idenfifier), True])
-        for state in states
-    ]
+    [entries.append(["state", state, _primary_idenfifier, True]) for state in states]
 
     return entries
 
