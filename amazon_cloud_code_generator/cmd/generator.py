@@ -6,7 +6,7 @@
 
 import copy
 import re
-from typing import Iterable, List, Dict
+from typing import Iterable, List, Dict, Iterator
 
 from .utils import python_type
 from .utils import scrub_keys
@@ -35,6 +35,30 @@ class Description:
         return with_no_line_break
 
     @classmethod
+    def _get_values(cls, a_dict: dict) -> Iterator[list]:
+        """
+        Generator that navigates in a multi-level dictionary and yield values
+        found in the `choices` and `enum` keys
+        """
+        seen = []
+        stack = [[key, value] for key, value in a_dict.items()]
+        while stack:
+            key, value = stack.pop()
+
+            def already_seen():
+                for s in seen:
+                    if value is s:
+                        return True
+
+            if already_seen():
+                continue
+            seen.append(value)
+            if isinstance(value, dict):
+                stack.append([key, value])
+            elif key in ("choices", "enum"):
+                yield value
+
+    @classmethod
     def clean_up(cls, definitions: Iterable, my_string: str) -> str:
         values = set()
         ignored_keys = set(
@@ -53,15 +77,7 @@ class Description:
         )
         ignored_values = set(["PUT", "S3"])
 
-        def get_values(a_dict):
-            for key, value in a_dict.items():
-                if isinstance(value, dict):
-                    yield from get_values(value)
-                else:
-                    if key in ("choices", "enum"):
-                        yield value
-
-        for value in get_values(definitions):
+        for value in cls._get_values(definitions):
             values |= set(value)
 
         def rewrite_name(matchobj):

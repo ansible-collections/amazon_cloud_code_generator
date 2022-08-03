@@ -68,3 +68,12 @@ def test_generate_documentation():
         "1.0.0",
     )
     assert documentation == expected_content
+
+# Description
+def test_Description_get_values():
+    list(g.Description._get_values({})) == []
+    first = {"a": "b"}
+    second = {"c:": first}
+    first["d"] = second
+    third = {"e": {"g": second}, "f": {"enum": ["1", "2"]}}
+    list(g.Description._get_values({"un": first, "deux": second})) == []
