@@ -249,19 +249,27 @@ class CloudControlResource(object):
 
         resource = None
 
-        for id in primary_identifier:
-            identifier[
-                snake_to_camel(id, capitalize_first=True)
-            ] = self.module.params.get(id)
+        if self.module.params.get("identifier"):
+            identifier = self.module.params.get("identifier")
+        else:
+            for id in primary_identifier:
+                identifier[
+                    snake_to_camel(id, capitalize_first=True)
+                ] = self.module.params.get(id)
+            identifier = json.dumps(identifier)
 
         try:
             resource = self.client.get_resource(
-                TypeName=type_name, Identifier=json.dumps(identifier)
+                TypeName=type_name, Identifier=identifier
             )
             results = self.update_resource(
                 resource, params, create_only_params, handlers
             )
         except self.client.exceptions.ResourceNotFoundException:
+            if self.module.params.get("identifier"):
+                self.module.fail_json(
+                    f"You must specify both {*primary_identifier, } to create a new resource. The identifier parameter can only be used to manipulate an existing resource."
+                )
             results["changed"] |= self.create_resource(type_name, params)
         except (
             botocore.exceptions.BotoCoreError,
@@ -337,14 +345,18 @@ class CloudControlResource(object):
         identifier: Dict = {}
         response: Dict = {}
 
-        for id in primary_identifier:
-            identifier[
-                snake_to_camel(id, capitalize_first=True)
-            ] = self.module.params.get(id)
+        if self.module.params.get("identifier"):
+            identifier = self.module.params.get("identifier")
+        else:
+            for id in primary_identifier:
+                identifier[
+                    snake_to_camel(id, capitalize_first=True)
+                ] = self.module.params.get(id)
+            identifier = json.dumps(identifier)
 
         try:
             response = self.client.get_resource(
-                TypeName=type_name, Identifier=json.dumps(identifier)
+                TypeName=type_name, Identifier=identifier
             )
         except self.client.exceptions.ResourceNotFoundException:
             return changed

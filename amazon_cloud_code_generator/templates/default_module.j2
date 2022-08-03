@@ -18,8 +18,11 @@ def main():
     required_if = [
         {{ required_if|join(",") }}
     ]
+    mutually_exclusive = [
+        {{ mutually_exclusive|join(",") }}
+    ]
 
-    module = AnsibleAWSModule(argument_spec=argument_spec, required_if=required_if, supports_check_mode=True)
+    module = AnsibleAWSModule(argument_spec=argument_spec, required_if=required_if, mutually_exclusive=mutually_exclusive, supports_check_mode=True)
     cloud = CloudControlResource(module)
 
     type_name = {{resource_type}}
@@ -45,7 +48,7 @@ def main():
 
     state = module.params.get('state')
     identifier = {{primary_identifier}}
-
+    {{ ensure_all_identifiers_defined }}
     results = {"changed": False, "result": {}}
 
     if state == "list":
