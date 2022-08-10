@@ -86,7 +86,7 @@ waiters_by_name = {
         "CloudControlApi",
         "resource_request_success",
     ): lambda cloudcontrol: core_waiter.Waiter(
-        "resource_request_complete",
+        "resource_request_success",
         cloudcontrolapi_model("ResourceRequestSuccess"),
         core_waiter.NormalizedOperationMethod(cloudcontrol.get_resource_request_status),
     ),

@@ -1,4 +1,5 @@
 import re
+import copy
 import json
 import functools
 import traceback
@@ -236,12 +237,55 @@ class JsonPatch(list):
         return json.dumps(self)
 
 
-def list_merge(old, new):
-    l = []
-    for i in old + new:
-        if i not in l:
-            l.append(i)
-    return l
+def list_merge(dict_1, dict_2):
+    """
+    Recursively merge dict_2 over dict_1.
+    """
+
+    assert type(dict_1) == type(dict_2), f"Mismatched types for '{dict_1}' and {dict_2}"
+
+    if isinstance(dict_1, dict):
+        if "Key" in dict_1.keys() and "Key" in dict_2.keys():
+            if dict_1["Key"] == dict_2["Key"]:
+                return dict_2
+
+        # Add missing keys to dict_1
+        dict_1 = {**dict_1, **{k: v for k, v in dict_2.items() if k not in dict_1}}
+        match = []
+        keys = {k for k in dict_1 if k in dict_2}
+
+        for key in keys:
+            if (res := list_merge(dict_1[key], dict_2[key])) is not None:
+                dict_1[key] = res
+                match.append(True)
+            else:
+                match.append(False)
+
+        if not all(match):
+            return None
+
+    elif isinstance(dict_1, list):
+        # Compare every list element against the 2nd dict
+        for i_2 in range(len(dict_2)):
+            match = []
+            for i_1 in range(len(dict_1)):
+                try:
+                    if res := list_merge(dict_1[i_1], dict_2[i_2]):
+                        dict_1[i_1] = res
+                        match.append(True)
+                    else:
+                        match.append(False)
+                except Exception as e:
+                    pass
+
+            # If None is returned, the object is merged from 1 level up
+            if not any(match):
+                dict_1.append(dict_2[i_2])
+    else:
+        # If both dicts dont' match, return None which signals to the previous stack to merge one level up
+        return dict_1 if dict_1 == dict_2 else None
+
+    return dict_1
 
 
 def op(operation, path, value):
@@ -249,13 +293,44 @@ def op(operation, path, value):
     return {"op": operation, "path": path, "value": value}
 
 
-# This is a rather naive implementation. Dictionaries within
-# lists and lists within dictionaries will not be merged.
 def make_op(path, old, new, strategy):
     if isinstance(old, dict):
         if strategy == "merge":
             new = dict(old, **new)
     elif isinstance(old, list):
         if strategy == "merge":
-            new = list_merge(old, new)
+            old_copy = copy.deepcopy(old)
+            new = list_merge(old_copy, new)
+
     return op("replace", path, new)
+
+
+def get_patch(module, params, properties):
+    patch = JsonPatch()
+
+    for k, v_in in params.items():
+        strategy = "merge"
+        if k in properties:
+            # q(k)
+            v_exisiting = properties.get(k)
+            # Continue loop if both values are equal
+            if v_in == v_exisiting:
+                continue
+            # Compare lists contents, not order (i.e. list of tag dicts)
+            if isinstance(v_in, list) and isinstance(v_exisiting, list):
+                if [tag for tag in v_in if tag not in v_exisiting] == [] and [
+                    tag for tag in v_exisiting if tag not in v_in
+                ] == []:
+                    continue
+            # If purge, then replace old resource
+            if module.params.get("purge_{0}".format(k.lower())):
+                strategy = "replace"
+            # Add difference to JSON patch
+            patch.append(make_op(k, v_exisiting, v_in, strategy))
+        else:
+            # Add patch if key isnt in properties - dont add tags if tags = {} and no tags on resource
+            if k == "Tags" and v_in == [] and "tags" not in properties:
+                continue
+            patch.append(op("add", k, v_in))
+
+    return patch

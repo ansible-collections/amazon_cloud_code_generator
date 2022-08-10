@@ -150,7 +150,7 @@ def gen_required_if(schema: Dict) -> List:
         [
             "state",
             "present",
-            [*_primary_idenfifier, *required],
+            list(set([*_primary_idenfifier, *required])),
             True,
         ]
     )

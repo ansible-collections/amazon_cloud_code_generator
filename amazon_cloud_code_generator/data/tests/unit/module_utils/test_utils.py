@@ -12,6 +12,7 @@ from ansible_collections.amazon.cloud.plugins.module_utils.utils import (
     boto3_tag_list_to_ansible_dict,
     diff_dicts,
     normalize_response,
+    list_merge,
 )
 
 
@@ -234,3 +235,63 @@ def test_normalize_response_multiple():
         },
     ]
     assert normalized_response == normalize_response(response)
+
+
+def test_list_merge_empty_dicts():
+    dict_1 = []
+    dict_2 = []
+    expected = []
+
+    list_merge(dict_1, dict_2)
+    assert dict_1 == expected
+
+
+def test_list_merge_one_empty_dict():
+    dict_1 = []
+    dict_2 = [
+        {"Key": "newPascalCaseKey", "Value": "pascalCaseValue"},
+        {"Key": "NewCamelCaseKey", "Value": "CamelCaseValue"},
+        {"Key": "new_snake_case_key", "Value": "snake_case_value"},
+        {"Key": "New Key with Spaces", "Value": "Updated Value with spaces"},
+    ]
+
+    expected = [
+        {"Key": "newPascalCaseKey", "Value": "pascalCaseValue"},
+        {"Key": "NewCamelCaseKey", "Value": "CamelCaseValue"},
+        {"Key": "new_snake_case_key", "Value": "snake_case_value"},
+        {"Key": "New Key with Spaces", "Value": "Updated Value with spaces"},
+    ]
+
+    list_merge(dict_1, dict_2)
+    assert dict_1 == expected
+
+
+def test_list_merge_one_empty_dict():
+    dict_1 = [
+        {"Key": "Key with Spaces", "Value": "Value with spaces"},
+        {"Key": "CamelCaseKey", "Value": "CamelCaseValue"},
+        {"Key": "pascalCaseKey", "Value": "pascalCaseValue"},
+        {"Key": "snake_case_key", "Value": "snake_case_value"},
+        {"Key": "New Key with Spaces", "Value": "Value with spaces"},
+    ]
+
+    dict_2 = [
+        {"Key": "newPascalCaseKey", "Value": "pascalCaseValue"},
+        {"Key": "NewCamelCaseKey", "Value": "CamelCaseValue"},
+        {"Key": "new_snake_case_key", "Value": "snake_case_value"},
+        {"Key": "New Key with Spaces", "Value": "Updated Value with spaces"},
+    ]
+
+    expected = [
+        {"Key": "Key with Spaces", "Value": "Value with spaces"},
+        {"Key": "CamelCaseKey", "Value": "CamelCaseValue"},
+        {"Key": "pascalCaseKey", "Value": "pascalCaseValue"},
+        {"Key": "snake_case_key", "Value": "snake_case_value"},
+        {"Key": "New Key with Spaces", "Value": "Updated Value with spaces"},
+        {"Key": "newPascalCaseKey", "Value": "pascalCaseValue"},
+        {"Key": "NewCamelCaseKey", "Value": "CamelCaseValue"},
+        {"Key": "new_snake_case_key", "Value": "snake_case_value"},
+    ]
+
+    list_merge(dict_1, dict_2)
+    assert dict_1 == expected
