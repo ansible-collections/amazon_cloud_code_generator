@@ -275,7 +275,7 @@ def list_merge(dict_1, dict_2):
                         match.append(True)
                     else:
                         match.append(False)
-                except Exception as e:
+                except Exception:
                     pass
 
             # If None is returned, the object is merged from 1 level up
@@ -311,7 +311,6 @@ def get_patch(module, params, properties):
     for k, v_in in params.items():
         strategy = "merge"
         if k in properties:
-            # q(k)
             v_exisiting = properties.get(k)
             # Continue loop if both values are equal
             if v_in == v_exisiting:
