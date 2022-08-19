@@ -35,8 +35,8 @@
     - name: test adding tags to amazon.cloud.s3_bucket (check mode)
       amazon.cloud.s3_bucket:
         tags: '{{ first_tags }}'
-        purge_tags: True
-      check_mode: True
+        purge_tags: true
+      check_mode: true
       register: _result
     - name: assert that update succeeded
       assert:
@@ -47,7 +47,7 @@
     - name: test adding tags to amazon.cloud.s3_bucket
       amazon.cloud.s3_bucket:
         tags: '{{ first_tags }}'
-        purge_tags: True
+        purge_tags: true
       register: _result
     - name: assert that update succeeded
       assert:
@@ -59,7 +59,7 @@
     - name: test adding tags to amazon.cloud.s3_bucket - idempotency (check mode)
       amazon.cloud.s3_bucket:
         tags: '{{ first_tags }}'
-        purge_tags: True
+        purge_tags: true
       register: _result
       check_mode: yes
     - name: assert that update succeeded
@@ -73,7 +73,7 @@
     - name: test adding tags to amazon.cloud.s3_bucket - idempotency
       amazon.cloud.s3_bucket:
         tags: '{{ first_tags }}'
-        purge_tags: True
+        purge_tags: true
       register: _result
     - name: assert that update succeeded
       assert:
@@ -87,7 +87,7 @@
     - name: test updating tags with purge on amazon.cloud.s3_bucket (check mode)
       amazon.cloud.s3_bucket:
         tags: '{{ second_tags }}'
-        purge_tags: True
+        purge_tags: true
       register: _result
       check_mode: yes
     - name: assert that update succeeded
@@ -98,7 +98,7 @@
     - name: test updating tags with purge on amazon.cloud.s3_bucket
       amazon.cloud.s3_bucket:
         tags: '{{ second_tags }}'
-        purge_tags: True
+        purge_tags: true
       register: _result
     - name: assert that update succeeded
       assert:
@@ -109,7 +109,7 @@
     - name: test updating tags with purge on amazon.cloud.s3_bucket - idempotency (check mode)
       amazon.cloud.s3_bucket:
         tags: '{{ second_tags }}'
-        purge_tags: True
+        purge_tags: true
       register: _result
       check_mode: yes
     - name: assert that update succeeded
@@ -120,7 +120,7 @@
     - name: test updating tags with purge on amazon.cloud.s3_bucket - idempotency
       amazon.cloud.s3_bucket:
         tags: '{{ second_tags }}'
-        purge_tags: True
+        purge_tags: true
       register: _result
     - name: assert that update succeeded
       assert:
@@ -133,7 +133,7 @@
     - name: test updating tags without purge on amazon.cloud.s3_bucket (check mode)
       amazon.cloud.s3_bucket:
         tags: '{{ third_tags }}'
-        purge_tags: False
+        purge_tags: false
       register: _result
       check_mode: yes
     - name: assert that update succeeded
@@ -144,7 +144,7 @@
     - name: test updating tags without purge on amazon.cloud.s3_bucket
       amazon.cloud.s3_bucket:
         tags: '{{ third_tags }}'
-        purge_tags: False
+        purge_tags: false
         wait: true
         wait_timeout: 120
       register: _result
@@ -157,7 +157,7 @@
     - name: test updating tags without purge on amazon.cloud.s3_bucket - idempotency (check mode)
       amazon.cloud.s3_bucket:
         tags: '{{ third_tags }}'
-        purge_tags: False
+        purge_tags: false
       register: _result
       check_mode: yes
     - name: assert that update succeeded
@@ -168,7 +168,7 @@
     - name: test updating tags without purge on amazon.cloud.s3_bucket - idempotency
       amazon.cloud.s3_bucket:
         tags: '{{ third_tags }}'
-        purge_tags: False
+        purge_tags: false
         wait: true
       register: _result
     - name: assert that update succeeded
@@ -202,7 +202,7 @@
     - name: test removing tags from amazon.cloud.s3_bucket (check mode)
       amazon.cloud.s3_bucket:
         tags: {}
-        purge_tags: True
+        purge_tags: true
       register: _result
       check_mode: yes
     - name: assert that update succeeded
@@ -213,7 +213,7 @@
     - name: test removing tags from amazon.cloud.s3_bucket
       amazon.cloud.s3_bucket:
         tags: {}
-        purge_tags: True
+        purge_tags: true
       register: _result
     - name: assert that update succeeded
       assert:
@@ -224,7 +224,7 @@
     - name: test removing tags from amazon.cloud.s3_bucket - idempotency (check mode)
       amazon.cloud.s3_bucket:
         tags: {}
-        purge_tags: True
+        purge_tags: true
       register: _result
       check_mode: yes
     - name: assert that update succeeded
@@ -235,7 +235,7 @@
     - name: test removing tags from amazon.cloud.s3_bucket - idempotency
       amazon.cloud.s3_bucket:
         tags: {}
-        purge_tags: True
+        purge_tags: true
       register: _result
     - name: assert that update succeeded
       assert:

@@ -237,55 +237,19 @@ class JsonPatch(list):
         return json.dumps(self)
 
 
-def list_merge(dict_1, dict_2):
-    """
-    Recursively merge dict_2 over dict_1.
-    """
+def find_tag_by_key(key, tags):
+    for tag in tags:
+        if tag["Key"] == key:
+            return tag
 
-    assert type(dict_1) == type(dict_2), f"Mismatched types for '{dict_1}' and {dict_2}"
 
-    if isinstance(dict_1, dict):
-        if "Key" in dict_1.keys() and "Key" in dict_2.keys():
-            if dict_1["Key"] == dict_2["Key"]:
-                return dict_2
-
-        # Add missing keys to dict_1
-        dict_1 = {**dict_1, **{k: v for k, v in dict_2.items() if k not in dict_1}}
-        match = []
-        keys = {k for k in dict_1 if k in dict_2}
-
-        for key in keys:
-            if (res := list_merge(dict_1[key], dict_2[key])) is not None:
-                dict_1[key] = res
-                match.append(True)
-            else:
-                match.append(False)
-
-        if not all(match):
-            return None
-
-    elif isinstance(dict_1, list):
-        # Compare every list element against the 2nd dict
-        for i_2 in range(len(dict_2)):
-            match = []
-            for i_1 in range(len(dict_1)):
-                try:
-                    if res := list_merge(dict_1[i_1], dict_2[i_2]):
-                        dict_1[i_1] = res
-                        match.append(True)
-                    else:
-                        match.append(False)
-                except Exception:
-                    pass
-
-            # If None is returned, the object is merged from 1 level up
-            if not any(match):
-                dict_1.append(dict_2[i_2])
-    else:
-        # If both dicts dont' match, return None which signals to the previous stack to merge one level up
-        return dict_1 if dict_1 == dict_2 else None
-
-    return dict_1
+def tag_merge(t1, t2):
+    for tag in t2:
+        if existing := find_tag_by_key(tag["Key"], t1):
+            existing["Value"] = tag["Value"]
+        else:
+            t1.append(tag)
+    return t1
 
 
 def op(operation, path, value):
@@ -294,15 +258,17 @@ def op(operation, path, value):
 
 
 def make_op(path, old, new, strategy):
+    _new_cpy = copy.deepcopy(new)
+
     if isinstance(old, dict):
         if strategy == "merge":
-            new = dict(old, **new)
+            _new_cpy = dict(old, **new)
     elif isinstance(old, list):
         if strategy == "merge":
-            old_copy = copy.deepcopy(old)
-            new = list_merge(old_copy, new)
+            _old_cpy = copy.deepcopy(old)
+            _new_cpy = tag_merge(_old_cpy, new)
 
-    return op("replace", path, new)
+    return op("replace", path, _new_cpy)
 
 
 def get_patch(module, params, properties):

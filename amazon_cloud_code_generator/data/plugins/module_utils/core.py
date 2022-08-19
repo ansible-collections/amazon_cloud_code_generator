@@ -35,6 +35,7 @@ __metaclass__ = type
 
 
 import json
+import time
 import traceback
 from itertools import count
 from typing import Iterable, List, Dict, Optional, Union
@@ -72,7 +73,7 @@ class CloudControlResource(object):
         """
         self.module = module
         self.client = module.client(
-            "cloudcontrol", retry_decorator=AWSRetry.jittered_backoff()
+            "cloudcontrol", retry_decorator=AWSRetry.jittered_backoff(retries=10)
         )
 
     @property
@@ -219,7 +220,7 @@ class CloudControlResource(object):
 
         try:
             response = self.client.get_resource(
-                TypeName=type_name, Identifier=primary_identifier
+                TypeName=type_name, Identifier=primary_identifier, aws_retry=True
             )
         except self.client.exceptions.ResourceNotFoundException:
             return response
@@ -257,7 +258,7 @@ class CloudControlResource(object):
 
         try:
             resource = self.client.get_resource(
-                TypeName=type_name, Identifier=identifier
+                TypeName=type_name, Identifier=identifier, aws_retry=True
             )
             results = self.update_resource(resource, params, create_only_params)
         except self.client.exceptions.ResourceNotFoundException:
@@ -351,7 +352,7 @@ class CloudControlResource(object):
 
         try:
             response = self.client.get_resource(
-                TypeName=type_name, Identifier=identifier
+                TypeName=type_name, Identifier=identifier, aws_retry=True
             )
         except self.client.exceptions.ResourceNotFoundException:
             return changed
@@ -405,10 +406,10 @@ class CloudControlResource(object):
 
     def ensure_request_status(self, response: Dict) -> bool:
         # Wait until reource request becomes IN_PROGRESS
-        response: Dict = {}
-        wait_for_request: bool = False
+        time_end = time.time() + self.module.params.get("wait_timeout")
+        delay = 15
 
-        for i in count():
+        while time.time() < time_end:
             if response and response["ProgressEvent"]["OperationStatus"] == "PENDING":
                 try:
                     response = self.client.get_resource_request_status(
@@ -421,11 +422,12 @@ class CloudControlResource(object):
                     self.module.fail_json_aws(
                         e, msg="Failed to get resource request status"
                     )
-                wait_for_request = True
             else:
-                break
+                return
+            time.sleep(delay)
 
-        return wait_for_request
+        # Timeout occured
+        self.module.fail_json(msg="Timeout occured waiting for resource request")
 
     def update_resource(
         self,
