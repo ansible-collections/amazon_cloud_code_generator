@@ -54,8 +54,9 @@ def test_present_updates_resource(ccr):
         },
     }
     ccr.client.get_resource.return_value = resource
+    create_only_params = []
     params = {"BucketName": "test_bucket", "Tags": [{"Key": "k", "Value": "v"}]}
-    changed = ccr.present("AWS::S3::Bucket", "test_bucket", params)
+    changed = ccr.present("AWS::S3::Bucket", "test_bucket", params, create_only_params)
     assert changed
     ccr.client.update_resource.assert_called_with(
         TypeName="AWS::S3::Bucket",
