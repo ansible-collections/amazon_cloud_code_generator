@@ -35,15 +35,13 @@ __metaclass__ = type
 
 
 import json
+import time
 import traceback
 from itertools import count
 from typing import Iterable, List, Dict, Optional, Union
 
 from ansible_collections.amazon.aws.plugins.module_utils.ec2 import AWSRetry
 from .utils import (
-    JsonPatch,
-    make_op,
-    op,
     normalize_response,
     scrub_keys,
     to_sync,
@@ -53,6 +51,7 @@ from .utils import (
     diff_dicts,
     snake_to_camel,
     json_patch,
+    get_patch,
 )
 
 from ansible_collections.amazon.cloud.plugins.module_utils.waiters import get_waiter
@@ -74,7 +73,7 @@ class CloudControlResource(object):
         """
         self.module = module
         self.client = module.client(
-            "cloudcontrol", retry_decorator=AWSRetry.jittered_backoff()
+            "cloudcontrol", retry_decorator=AWSRetry.jittered_backoff(retries=10)
         )
 
     @property
@@ -221,7 +220,7 @@ class CloudControlResource(object):
 
         try:
             response = self.client.get_resource(
-                TypeName=type_name, Identifier=primary_identifier
+                TypeName=type_name, Identifier=primary_identifier, aws_retry=True
             )
         except self.client.exceptions.ResourceNotFoundException:
             return response
@@ -241,7 +240,6 @@ class CloudControlResource(object):
         primary_identifier: List,
         params: Dict,
         create_only_params: List,
-        handlers: Dict,
     ) -> bool:
         results = {"changed": False, "result": {}}
         create_only_params = create_only_params or []
@@ -260,11 +258,9 @@ class CloudControlResource(object):
 
         try:
             resource = self.client.get_resource(
-                TypeName=type_name, Identifier=identifier
+                TypeName=type_name, Identifier=identifier, aws_retry=True
             )
-            results = self.update_resource(
-                resource, params, create_only_params, handlers
-            )
+            results = self.update_resource(resource, params, create_only_params)
         except self.client.exceptions.ResourceNotFoundException:
             if self.module.params.get("identifier"):
                 self.module.fail_json(
@@ -356,7 +352,7 @@ class CloudControlResource(object):
 
         try:
             response = self.client.get_resource(
-                TypeName=type_name, Identifier=identifier
+                TypeName=type_name, Identifier=identifier, aws_retry=True
             )
         except self.client.exceptions.ResourceNotFoundException:
             return changed
@@ -408,12 +404,36 @@ class CloudControlResource(object):
 
         return changed
 
+    def ensure_request_status(self, response: Dict) -> bool:
+        # Wait until reource request becomes IN_PROGRESS
+        time_end = time.time() + self.module.params.get("wait_timeout")
+        delay = 15
+
+        while time.time() < time_end:
+            if response and response["ProgressEvent"]["OperationStatus"] == "PENDING":
+                try:
+                    response = self.client.get_resource_request_status(
+                        RequestToken=response["ProgressEvent"]["RequestToken"]
+                    )
+                except (
+                    botocore.exceptions.BotoCoreError,
+                    botocore.exceptions.ClientError,
+                ) as e:
+                    self.module.fail_json_aws(
+                        e, msg="Failed to get resource request status"
+                    )
+            else:
+                return
+            time.sleep(delay)
+
+        # Timeout occured
+        self.module.fail_json(msg="Timeout occured waiting for resource request")
+
     def update_resource(
         self,
         resource: Dict,
         params_to_set: Dict,
         create_only_params: List,
-        handlers: Dict,
     ) -> bool:
         identifier = resource["ResourceDescription"]["Identifier"]
         type_name = resource["TypeName"]
@@ -424,26 +444,9 @@ class CloudControlResource(object):
         # Ignore createOnlyProperties that can be set only during resource creation
         params = scrub_keys(params_to_set, create_only_params)
 
-        patch = JsonPatch()
-        for k, v in params.items():
-            strategy = "merge"
-            if v == properties.get(k):
-                continue
-            if k not in properties:
-                patch.append(op("add", k, v))
-            else:
-                if self.module.params.get("purge_{0}".format(k.lower())):
-                    strategy = "replace"
-                patch.append(make_op(k, properties[k], v, strategy))
+        in_progress_requests = self.check_in_progress_requests(type_name, identifier)
 
-        if self.module.check_mode:
-            obj, error = json_patch(properties, patch)
-            if error:
-                self.module.fail_json(**error)
-        else:
-            in_progress_requests = self.check_in_progress_requests(
-                type_name, identifier
-            )
+        if not self.module.check_mode:
             if self.module.params.get("force"):
                 self.module.warn(
                     f"There is one or more IN PROGRESS or PENDING resource requests on {identifier} that will be cancelled."
@@ -461,31 +464,43 @@ class CloudControlResource(object):
                         e, msg="Failed to cancel resource request"
                     )
 
-            self.wait_for_in_progress_requests(in_progress_requests, identifier)
-
-            try:
-                response = self.client.update_resource(
-                    TypeName=type_name,
-                    Identifier=identifier,
-                    PatchDocument=str(patch),
-                )
-                obj = json.loads(response["ProgressEvent"]["ResourceModel"])
-            except self.client.exceptions.ResourceNotFoundException:
-                # If there is an IN PROGRESS delete opration on the resource and
-                # the resource is deleted before (so it can't be updated)
-                return results
-            except (
-                botocore.exceptions.BotoCoreError,
-                botocore.exceptions.ClientError,
-            ) as e:
-                self.module.fail_json_aws(e, msg="Failed to update resource")
-
-        if not self.module.check_mode and self.module.params.get("wait"):
-            self.wait_until_resource_request_success(
-                response["ProgressEvent"]["RequestToken"]
-            )
-
+        patch = get_patch(self.module, params, properties)
+        obj, error = json_patch(properties, patch)
+        if error:
+            self.module.fail_json(**error)
         match, diffs = diff_dicts(properties, obj)
+
+        if not self.module.check_mode:
+            # To handle idempotency when purge_* params are False (where the patch is always generated with strategy='replace')
+            # call self.client.update_resource() only when there's a difference
+            if diffs:
+                # Wait for IN PROGRESS or PENDING resource requests to avoid concurrency exceptions
+                self.wait_for_in_progress_requests(in_progress_requests, identifier)
+                try:
+                    response = self.client.update_resource(
+                        TypeName=type_name,
+                        Identifier=identifier,
+                        PatchDocument=str(patch),
+                    )
+                except (
+                    botocore.exceptions.BotoCoreError,
+                    botocore.exceptions.ClientError,
+                ) as e:
+                    self.module.fail_json_aws(e, msg="Failed to update resource")
+
+                # Ensure the request is at least IN_PROGRESS to return updated information
+                # Tag updates hangs on PENDING sometimes and updates are not reflected on the resource at this stage
+                self.ensure_request_status(response)
+
+                if self.module.params.get("wait"):
+                    self.wait_until_resource_request_success(
+                        response["ProgressEvent"]["RequestToken"]
+                    )
+            else:
+                # If there's no update and wait=True
+                # wait for any in_progress resource request to complete
+                if self.module.params.get("wait"):
+                    self.wait_for_in_progress_requests(in_progress_requests, identifier)
 
         results["changed"] = not match
         if self.module._diff:

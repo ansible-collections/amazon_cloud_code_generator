@@ -134,7 +134,7 @@
             - _result is changed
             - "'diff' in _result"
             - _result.diff.after != {}
-            - _result.diff.before != {}
+            - _result.diff.before == {}
 
     - name: Update S3 bucket public access block configuration and tags - idempotence (diff=true)
       amazon.cloud.s3_bucket:
@@ -224,6 +224,8 @@
         that:
             - _result is success
             - _result is not changed
+    
+    - include_tasks: tagging.yml
     
     - name: Delete S3 bucket - check_mode
       amazon.cloud.s3_bucket:

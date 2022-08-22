@@ -1,4 +1,5 @@
 import re
+import copy
 import json
 import functools
 import traceback
@@ -236,12 +237,19 @@ class JsonPatch(list):
         return json.dumps(self)
 
 
-def list_merge(old, new):
-    l = []
-    for i in old + new:
-        if i not in l:
-            l.append(i)
-    return l
+def find_tag_by_key(key, tags):
+    for tag in tags:
+        if tag["Key"] == key:
+            return tag
+
+
+def tag_merge(t1, t2):
+    for tag in t2:
+        if existing := find_tag_by_key(tag["Key"], t1):
+            existing["Value"] = tag["Value"]
+        else:
+            t1.append(tag)
+    return t1
 
 
 def op(operation, path, value):
@@ -249,13 +257,45 @@ def op(operation, path, value):
     return {"op": operation, "path": path, "value": value}
 
 
-# This is a rather naive implementation. Dictionaries within
-# lists and lists within dictionaries will not be merged.
 def make_op(path, old, new, strategy):
+    _new_cpy = copy.deepcopy(new)
+
     if isinstance(old, dict):
         if strategy == "merge":
-            new = dict(old, **new)
+            _new_cpy = dict(old, **new)
     elif isinstance(old, list):
         if strategy == "merge":
-            new = list_merge(old, new)
-    return op("replace", path, new)
+            _old_cpy = copy.deepcopy(old)
+            _new_cpy = tag_merge(_old_cpy, new)
+
+    return op("replace", path, _new_cpy)
+
+
+def get_patch(module, params, properties):
+    patch = JsonPatch()
+
+    for k, v_in in params.items():
+        strategy = "merge"
+        if k in properties:
+            v_exisiting = properties.get(k)
+            # Continue loop if both values are equal
+            if v_in == v_exisiting:
+                continue
+            # Compare lists contents, not order (i.e. list of tag dicts)
+            if isinstance(v_in, list) and isinstance(v_exisiting, list):
+                if [tag for tag in v_in if tag not in v_exisiting] == [] and [
+                    tag for tag in v_exisiting if tag not in v_in
+                ] == []:
+                    continue
+            # If purge, then replace old resource
+            if module.params.get("purge_{0}".format(k.lower())):
+                strategy = "replace"
+            # Add difference to JSON patch
+            patch.append(make_op(k, v_exisiting, v_in, strategy))
+        else:
+            # Add patch if key isnt in properties - dont add tags if tags = {} and no tags on resource
+            if k == "Tags" and v_in == [] and "tags" not in properties:
+                continue
+            patch.append(op("add", k, v_in))
+
+    return patch
