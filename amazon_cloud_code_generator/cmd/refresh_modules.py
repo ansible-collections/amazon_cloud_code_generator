@@ -251,15 +251,18 @@ def generate_schema(raw_content) -> Dict:
     schema: Dict[str, Schema] = json_content
 
     for key, value in schema.items():
-        if isinstance(value, list):
-            elems = []
-            for v in value:
-                if isinstance(v, list):
-                    elems.extend([camel_to_snake(p.split("/")[-1].strip()) for p in v])
-                else:
-                    elems.append(camel_to_snake(v.split("/")[-1].strip()))
+        if key != "anyOf":
+            if isinstance(value, list):
+                elems = []
+                for v in value:
+                    if isinstance(v, list):
+                        elems.extend(
+                            [camel_to_snake(p.split("/")[-1].strip()) for p in v]
+                        )
+                    else:
+                        elems.append(camel_to_snake(v.split("/")[-1].strip()))
 
-            schema[key] = elems
+                schema[key] = elems
 
     return schema
 
@@ -273,8 +276,10 @@ class AnsibleModule:
 
     def generate_module_name(self):
         splitted = self.schema.get("typeName").split("::")
-        list_to_str = "".join(map(str, splitted[1:]))
-        return camel_to_snake(list_to_str)
+        prefix = splitted[1].lower()
+        list_to_str = "".join(map(str, splitted[2:]))
+        print(prefix + "_" + camel_to_snake(list_to_str))
+        return prefix + "_" + camel_to_snake(list_to_str)
 
     def is_trusted(self) -> bool:
         if get_module_from_config(self.name) is False:

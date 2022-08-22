@@ -48,10 +48,12 @@ class Description:
                 "DDThh",
                 "ARNs",
                 "VPCs",
-                "AWS::EFS::MountTarget",
+                "CloudTrail",
+                "GetConsoleOutput",
+                "RunInstances",
             ]
         )
-        ignored_values = set(["PUT", "S3"])
+        ignored_values = set(["PUT", "S3", "EC2"])
 
         def get_values(a_dict):
             for key, value in a_dict.items():
@@ -67,7 +69,7 @@ class Description:
         def rewrite_name(matchobj):
             """Rewrite option name to I(camel_to_snake(option))"""
             name = matchobj.group(0)
-            if name not in ignored_keys:
+            if name not in ignored_keys and not name.startswith("AWS::"):
                 snake_name = camel_to_snake(name)
                 output = f"I({snake_name})"
                 return output

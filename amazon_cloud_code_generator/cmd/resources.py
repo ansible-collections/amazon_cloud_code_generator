@@ -25,6 +25,23 @@ RESOURCES = [
     "AWS::S3::MultiRegionAccessPointPolicy",
     "AWS::S3ObjectLambda::AccessPoint",
     "AWS::S3ObjectLambda::AccessPointPolicy",
-    # multiple primary identifiers
+
+    # 0.2.0
     "AWS::EKS::FargateProfile",
+    "AWS::DynamoDB::GlobalTable",
+    "AWS::EKS::Addon",
+    "AWS::IAM::ServerCertificate",
+    "AWS::KMS::Alias",
+    "AWS::KMS::ReplicaKey",
+    "AWS::RDS::DBProxyEndpoint",
+    "AWS::Redshift::EndpointAccess",
+    "AWS::Redshift::EndpointAuthorization",
+    "AWS::Redshift::ScheduledAction",
+    "AWS::Route53::DNSSEC",
+    "AWS::Route53::KeySigningKey",
+    "AWS::S3::StorageLens",
+    "AWS::CloudTrail::Trail",
+    "AWS::CloudTrail::EventDataStore",
+    "AWS::CloudWatch::CompositeAlarm",
+    "AWS::CloudWatch::MetricStream",
 ]
