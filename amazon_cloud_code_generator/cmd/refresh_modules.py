@@ -384,6 +384,13 @@ def main():
             "plugins/modules/rdsdb_proxy.py",
             "plugins/modules/redshift_cluster.py",
             "plugins/modules/eks_cluster.py",
+            "plugins/modules/dynamodb_global_table.py",
+            "plugins/modules/kms_replica_key.py",
+            "plugins/modules/rds_db_proxy.py",
+            "plugins/modules/iam_server_certificate.p",
+            "plugins/modules/cloudtrail_trail.py",
+            "plugins/modules/route53_key_signing_key.py",
+            "plugins/modules/redshift_endpoint_authorization.py",
         ]
 
         for f in module_utils:
