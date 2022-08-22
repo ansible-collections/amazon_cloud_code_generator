@@ -17,7 +17,7 @@
         cert_b_data: '{{ lookup("file", path_cert_b) }}'
         chain_cert_data: '{{ lookup("file", path_intermediate_cert) }}'
       
-    - name: Create Certificate - check_mode
+    - name: Create Certificate - CHECK_MODE
       amazon.cloud.iam_server_certificate:
         server_certificate_name: '{{ cert_name }}'
         state: present
@@ -26,7 +26,7 @@
       register: create_cert
       check_mode: true
 
-    - name: check result - Create Certificate - check_mode
+    - name: Check result - Create Certificate - CHECK_MODE
       assert:
         that:
         - create_cert is successful
@@ -38,11 +38,12 @@
         state: present
         certificate_body: '{{ cert_a_data }}'
         private_key: '{{ lookup("file", path_cert_key) }}'
+        wait: true
       register: create_cert
       tags:
         - docs
 
-    - name: check result - Create Certificate
+    - name: Check result - Create Certificate
       assert:
         that:
         - create_cert is successful
@@ -57,42 +58,48 @@
       vars:
         result: "{{ create_cert.result.properties }}"
   
-    # - name: Create Certificate - check_mode (idempotency)
-    #   amazon.cloud.iam_server_certificate:
-    #     server_certificate_name: '{{ cert_name }}'
-    #     state: present
-    #     certificate_body: '{{ cert_a_data }}'
-    #     private_key: '{{ lookup("file", path_cert_key) }}'
-    #   register: create_cert
-    #   check_mode: true
+    - name: Create Certificate - CHECK_MODE (idempotency)
+      amazon.cloud.iam_server_certificate:
+        server_certificate_name: '{{ cert_name }}'
+        state: present
+        certificate_body: '{{ cert_a_data }}'
+        private_key: '{{ lookup("file", path_cert_key) }}'
+      register: create_cert
+      check_mode: true
 
-    # - name: check result - Create Certificate - check_mode
-    #   assert:
-    #     that:
-    #     - create_cert is successful
-    #     - create_cert is not changed
+    - name: Check result - Create Certificate - CHECK_MODE
+      assert:
+        that:
+        - create_cert is successful
+        - create_cert is not changed
     
-    # - name: Create Certificate (idempotency)
-    #   amazon.cloud.iam_server_certificate:
-    #     server_certificate_name: '{{ cert_name }}'
-    #     state: present
-    #     certificate_body: '{{ cert_a_data }}'
-    #     private_key: '{{ lookup("file", path_cert_key) }}'
-    #   register: create_cert
+    - name: Create Certificate (idempotency)
+      amazon.cloud.iam_server_certificate:
+        server_certificate_name: '{{ cert_name }}'
+        state: present
+        certificate_body: '{{ cert_a_data }}'
+        private_key: '{{ lookup("file", path_cert_key) }}'
+      register: create_cert
 
-    # - name: check result - Create Certificate
-    #   assert:
-    #     that:
-    #     - create_cert is successful
-    #    - create_cert is not changed
+    - name: Check result - Create Certificate
+      assert:
+        that:
+        - create_cert is successful
+        - create_cert is not changed
     
-    - name: Update Chaining Certificate - check_mode
+    - name: Update Chaining Certificate (CreateOnlyProperties) - CHECK_MODE
       amazon.cloud.iam_server_certificate:
         server_certificate_name: '{{ cert_name }}'
         state: present
         certificate_chain: '{{ chain_cert_data }}'
       register: update_cert
       ignore_errors: true
+    
+    - name: Check result - Update Certificate
+      assert:
+        that:
+        - create_cert is successful
+        - create_cert is not changed
     
     - name: Delete certificate
       amazon.cloud.iam_server_certificate:
@@ -102,20 +109,20 @@
       tags:
         - docs
 
-    - name: check result - Delete certificate
+    - name: Check result - Delete certificate
       assert:
         that:
         - delete_cert is successful
         - delete_cert is changed
 
-    - name: Delete certificate - idempotency - check_mode
+    - name: Delete certificate - idempotency - CHECK_MODE
       amazon.cloud.iam_server_certificate:
         server_certificate_name: '{{ cert_name }}'
         state: absent
       register: delete_cert
       check_mode: true
 
-    - name: check result - Delete certificate - check_mode
+    - name: Check result - Delete certificate - CHECK_MODE
       assert:
         that:
         - delete_cert is successful
@@ -133,7 +140,7 @@
         - delete_cert is successful
         - delete_cert is not changed
     
-    - name: Create Certificate with Chain and path - check_mode
+    - name: Create Certificate with Chain and path - CHECK_MODE
       amazon.cloud.iam_server_certificate:
         server_certificate_name: '{{ cert_name }}'
         state: present
@@ -144,7 +151,7 @@
       register: create_cert
       check_mode: true
 
-    - name: check result - Create Certificate with Chain and path - check_mode
+    - name: Check result - Create Certificate with Chain and path - CHECK_MODE
       assert:
         that:
         - create_cert is successful
@@ -162,7 +169,7 @@
       tags:
         - docs
 
-    - name: check result - Create Certificate with Chain and path
+    - name: Check result - Create Certificate with Chain and path
       assert:
         that:
         - create_cert is successful
@@ -177,57 +184,50 @@
       vars:
         result: "{{ create_cert.result.properties }}"
 
-    # - name: Create Certificate with Chain and path - idempotency - check_mode
-    #   amazon.cloud.iam_server_certificate:
-    #     name: '{{ cert_name }}'
-    #     state: present
-    #     cert: '{{ cert_a_data }}'
-    #     key: '{{ lookup("file", path_cert_key) }}'
-    #     cert_chain: '{{ chain_cert_data }}'
-    #     path: '/example/'
-    #   register: create_cert
-    #   check_mode: true
+    - name: Create Certificate with Chain and path - idempotency - CHECK_MODE
+      amazon.cloud.iam_server_certificate:
+        server_certificate_name: '{{ cert_name }}'
+        state: present
+        certificate_body: '{{ cert_a_data }}'
+        private_key: '{{ lookup("file", path_cert_key) }}'
+        certificate_chain: '{{ chain_cert_data }}'
+        path: '/example/'
+      register: create_cert
+      check_mode: true
 
-    # - name: check result - Create Certificate with Chain and path - idempotency - check_mode
-    #   assert:
-    #     that:
-    #     - create_cert is successful
-    #     - create_cert is not changed
+    - name: Check result - Create Certificate with Chain and path - idempotency - CHECK_MODE
+      assert:
+        that:
+        - create_cert is successful
+        - create_cert is not changed
 
-    # - name: Create Certificate with Chain and path - idempotency
-    #   amazon.cloud.iam_server_certificate:
-    #     name: '{{ cert_name }}'
-    #     state: present
-    #     cert: '{{ cert_a_data }}'
-    #     key: '{{ lookup("file", path_cert_key) }}'
-    #     cert_chain: '{{ chain_cert_data }}'
-    #     path: '/example/'
-    #   register: create_cert
+    - name: Create Certificate with chain and path - idempotency
+      amazon.cloud.iam_server_certificate:
+        server_certificate_name: '{{ cert_name }}'
+        state: present
+        certificate_body: '{{ cert_a_data }}'
+        private_key: '{{ lookup("file", path_cert_key) }}'
+        certificate_chain: '{{ chain_cert_data }}'
+        path: '/example/'
+      register: create_cert
 
-    # - name: check result - Create Certificate with Chain and path - idempotency
-    #   assert:
-    #     that:
-    #     - create_cert is successful
-    #     - create_cert is not changed
-    #     - '"arn" in create_cert'
-    #     - '"cert_body" in create_cert'
-    #     - '"cert_path" in create_cert'
-    #     - '"expiration_date" in create_cert'
-    #     - '"name" in create_cert'
-    #     - '"upload_date" in create_cert'
-    #     - create_cert.arn.startswith('arn:aws')
-    #     - create_cert.arn.endswith(cert_name)
-    #     - create_cert.name == cert_name
-    #     - create_cert.cert_path == '/example/'
-    #     - create_cert.cert_body == cert_a_data
+    - name: Check result - Create Certificate with Chain and path - idempotency
+      assert:
+        that:
+        - create_cert is successful
+        - create_cert is not changed
+
+    - name: Gather information about a certificate
+      amazon.cloud.iam_server_certificate:
+        server_certificate_name: '{{ cert_name }}'
+        state: get
+      register: create_info
+      tags:
+        - docs
 
   always:
     - name: Delete certificate
       amazon.cloud.iam_server_certificate:
-        server_certificate_name: '{{ item }}'
+        server_certificate_name: '{{ cert_name }}'
         state: absent
       ignore_errors: true
-      loop:
-      - '{{ cert_name }}'
-      - '{{ cert_name }}-renamed'
-      - '{{ cert_name }}-duplicate'
