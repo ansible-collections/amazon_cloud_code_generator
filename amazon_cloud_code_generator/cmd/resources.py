@@ -39,7 +39,6 @@ RESOURCES = [
     "AWS::Redshift::ScheduledAction",
     "AWS::Route53::DNSSEC",
     "AWS::Route53::KeySigningKey",
-    "AWS::S3::StorageLens",
     "AWS::CloudTrail::Trail",
     "AWS::CloudTrail::EventDataStore",
     "AWS::CloudWatch::CompositeAlarm",

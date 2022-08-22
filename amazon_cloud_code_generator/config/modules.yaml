@@ -127,11 +127,7 @@
 - route53_key_signing_key:
     documentation:
       short_description: Creates a new key-signing key (KSK) in a hosted zone
-      description: Creates a new key-signing key (KSK) in a hosted zone. 
-- s3_storage_lens:
-    documentation:
-      short_description: Creates and manages an instance of an Amazon S3 Storage Lens configuration
-      description: Creates and manages an instance of an Amazon S3 Storage Lens configuration.
+      description: Creates a new key-signing key (KSK) in a hosted zone.
 - cloudtrail_trail:
     documentation:
       short_description: Creates and manages a trail that specifies the settings for delivery of log data to an Amazon S3 bucket.
