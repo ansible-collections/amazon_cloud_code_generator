@@ -278,7 +278,6 @@ class AnsibleModule:
         splitted = self.schema.get("typeName").split("::")
         prefix = splitted[1].lower()
         list_to_str = "".join(map(str, splitted[2:]))
-        print(prefix + "_" + camel_to_snake(list_to_str))
         return prefix + "_" + camel_to_snake(list_to_str)
 
     def is_trusted(self) -> bool:
@@ -391,6 +390,7 @@ def main():
             "plugins/modules/cloudtrail_trail.py",
             "plugins/modules/route53_key_signing_key.py",
             "plugins/modules/redshift_endpoint_authorization.py",
+            "plugins/modules/eks_fargate_profile.py",
         ]
 
         for f in module_utils:

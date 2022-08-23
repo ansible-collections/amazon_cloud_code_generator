@@ -25,7 +25,6 @@ RESOURCES = [
     "AWS::S3::MultiRegionAccessPointPolicy",
     "AWS::S3ObjectLambda::AccessPoint",
     "AWS::S3ObjectLambda::AccessPointPolicy",
-
     # 0.2.0
     "AWS::EKS::FargateProfile",
     "AWS::DynamoDB::GlobalTable",
