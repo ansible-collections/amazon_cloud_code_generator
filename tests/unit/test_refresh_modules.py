@@ -48,7 +48,8 @@ def test__format_documentation():
     expected = """r'''
 module: logs_log_group
 short_description: Create and manage log groups
-description: Create and manage log groups.
+description:
+- Create and manage log groups.
 options:
     force:
         default: false

@@ -46,16 +46,6 @@ def test_Description_normalize():
     ) == [
         "Container for the transition rule that describes when noncurrent objects transition to the C(STANDARD_IA), C(ONEZONE_IA), C(INTELLIGENT_TIERING), C(GLACIER_IR), C(GLACIER), or C(DEEP_ARCHIVE) storage class."
     ]
-    assert g.Description.normalize(
-        "You must specify at least one of the following properties: Option, OptionOne and AnotherSecondOption."
-    ) == [
-        "You must specify at least one of the following properties: I(option), I(option_one) and I(another_second_option)."
-    ]
-    assert g.Description.normalize(
-        "You must specify at least one of the following properties: ``Option``, ``OptionOne`` and ``AnotherSecondOption``."
-    ) == [
-        "You must specify at least one of the following properties: I(option), I(option_one) and I(another_second_option)."
-    ]
 
 
 def test_generate_documentation():

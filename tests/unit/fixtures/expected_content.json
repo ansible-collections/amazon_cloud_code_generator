@@ -1,7 +1,9 @@
 {
     "module": "logs_log_group",
     "author": "Ansible Cloud Team (@ansible-collections)",
-    "description": "Create and manage log groups.",
+    "description": [
+        "Create and manage log groups."
+    ],
     "short_description": "Create and manage log groups",
     "options": {
         "log_group_name": {
