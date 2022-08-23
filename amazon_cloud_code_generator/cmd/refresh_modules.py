@@ -399,11 +399,6 @@ def main():
             "plugins/modules/route53_key_signing_key.py",
         ]
 
-        for f in mutually_exclusive_skip:
-            per_version_ignore_content += (
-                f"{f} validate-modules:mutually_exclusive-type\n"
-            )
-
         for f in module_utils:
             for skip in skip_list:
                 per_version_ignore_content += f"{f} {skip}\n"
@@ -414,16 +409,27 @@ def main():
 
             if f in validate_skip_needed:
                 if version in ["2.10", "2.11", "2.12", "2.13", "2.14"]:
-                    validate_skip_list = [
-                        "validate-modules:no-log-needed",
-                    ]
-                    for skip in validate_skip_list:
-                        per_version_ignore_content += f"{f} {skip}\n"
+                    if (
+                        f == "plugins/modules/redshift_endpoint_authorization.py"
+                        and version == "2.13"
+                    ):
+                        pass
+                    else:
+                        validate_skip_list = [
+                            "validate-modules:no-log-needed",
+                        ]
+                        for skip in validate_skip_list:
+                            per_version_ignore_content += f"{f} {skip}\n"
 
             if version in ["2.10", "2.11", "2.12", "2.13", "2.14"]:
                 per_version_ignore_content += (
                     f"{f} validate-modules:parameter-state-invalid-choice\n"
                 )
+
+        for f in mutually_exclusive_skip:
+            per_version_ignore_content += (
+                f"{f} validate-modules:mutually_exclusive-type\n"
+            )
 
         ignore_file = ignore_dir / f"ignore-{version}.txt"
         ignore_file.write_text(per_version_ignore_content)
