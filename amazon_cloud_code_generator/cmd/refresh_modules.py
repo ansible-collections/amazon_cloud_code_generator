@@ -411,7 +411,7 @@ def main():
                 if version in ["2.10", "2.11", "2.12", "2.13", "2.14"]:
                     if (
                         f == "plugins/modules/redshift_endpoint_authorization.py"
-                        and version == "2.13"
+                        and version in ("2.11", "2.12", "2.13", "2.14")
                     ):
                         pass
                     else:
@@ -436,9 +436,25 @@ def main():
 
     meta_dir = args.target_dir / "meta"
     meta_dir.mkdir(parents=True, exist_ok=True)
-    yaml_dict = {"requires_ansible": """>=2.9.10""", "action_groups": {"aws": []}}
+    yaml_dict = {
+        "requires_ansible": """>=2.9.10""",
+        "action_groups": {"aws": []},
+        "plugin_routing": {"modules": {}},
+    }
     for m in module_list:
         yaml_dict["action_groups"]["aws"].append(m)
+
+    yaml_dict["plugin_routing"]["modules"].update(
+        {
+            "rdsdb_proxy": {"redirect": "amazon.aws.rds_db_proxy"},
+            "s3_object_lambda_access_point": {
+                "redirect": "amazon.aws.s3objectlambda_access_point"
+            },
+            "s3_object_lambda_access_point_policy": {
+                "redirect": "amazon.aws.s3objectlambda_access_point_policy"
+            },
+        }
+    )
 
     runtime_file = meta_dir / "runtime.yml"
     with open(runtime_file, "w") as file:
