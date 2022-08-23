@@ -361,7 +361,7 @@ def generate_documentation(
         # https://docs.aws.amazon.com/cloudcontrolapi/latest/userguide/resource-identifier.html
         documentation["options"]["identifier"] = {
             "description": [
-                "For compound primary identifiers, to specify the primary identifier as a string, list each in the order that they are specified in the identifier list definition, separated by |.",
+                "For compound primary identifiers, to specify the primary identifier as a string, list each in the order that they are specified in the identifier list definition, separated by '|'.",
                 "For more details, visit U(https://docs.aws.amazon.com/cloudcontrolapi/latest/userguide/resource-identifier.html).",
             ],
             "type": "str",

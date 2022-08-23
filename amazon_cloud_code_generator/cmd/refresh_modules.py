@@ -446,14 +446,21 @@ def main():
 
     yaml_dict["plugin_routing"]["modules"].update(
         {
-            "rdsdb_proxy": {"redirect": "amazon.aws.rds_db_proxy"},
+            "rdsdb_proxy": {"redirect": "amazon.cloud.rds_db_proxy"},
             "s3_object_lambda_access_point": {
-                "redirect": "amazon.aws.s3objectlambda_access_point"
+                "redirect": "amazon.cloud.s3objectlambda_access_point"
             },
             "s3_object_lambda_access_point_policy": {
-                "redirect": "amazon.aws.s3objectlambda_access_point_policy"
+                "redirect": "amazon.cloud.s3objectlambda_access_point_policy"
             },
         }
+    )
+    yaml_dict["action_groups"]["aws"].extend(
+        [
+            "rdsdb_proxy",
+            "s3_object_lambda_access_point",
+            "s3_object_lambda_access_point_policy",
+        ]
     )
 
     runtime_file = meta_dir / "runtime.yml"
