@@ -386,12 +386,23 @@ def main():
             "plugins/modules/dynamodb_global_table.py",
             "plugins/modules/kms_replica_key.py",
             "plugins/modules/rds_db_proxy.py",
-            "plugins/modules/iam_server_certificate.p",
+            "plugins/modules/iam_server_certificate.py",
             "plugins/modules/cloudtrail_trail.py",
             "plugins/modules/route53_key_signing_key.py",
             "plugins/modules/redshift_endpoint_authorization.py",
             "plugins/modules/eks_fargate_profile.py",
         ]
+        mutually_exclusive_skip = [
+            "plugins/modules/eks_addon.py",
+            "plugins/modules/eks_fargate_profile.py",
+            "plugins/modules/redshift_endpoint_authorization.py",
+            "plugins/modules/route53_key_signing_key.py",
+        ]
+
+        for f in mutually_exclusive_skip:
+            per_version_ignore_content += (
+                f"{f} validate-modules:mutually_exclusive-type\n"
+            )
 
         for f in module_utils:
             for skip in skip_list:
