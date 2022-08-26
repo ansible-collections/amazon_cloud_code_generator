@@ -1,12 +1,12 @@
 - name: Delete IAM role
-  amazon.cloud.iam_role:
-    role_name: "{{ _result_create_iam_role.role_name }}"
+  community.aws.iam_role:
+    name: "{{ _result_create_iam_role.role_name }}"
     state: absent
   ignore_errors: true
 
 - name: Delete IAM role
-  amazon.cloud.iam_role:
-    role_name: "{{ _result_create_iam_role_fp.role_name }}"
+  community.aws.iam_role:
+    name: "{{ _result_create_iam_role_fp.role_name }}"
     state: absent
   ignore_errors: true
 
