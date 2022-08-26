@@ -1,11 +1,10 @@
 # Create a EKS Cluster to test Fargate Profile
 - name: Ensure IAM instance role exists
-  iam_role:
-    name: "{{ _resource_prefix }}-cluster-role"
+  amazon.cloud.iam_role:
+    role_name: "{{ _resource_prefix }}-cluster-role"
     assume_role_policy_document: "{{ lookup('file','eks_cluster-policy.json') }}"
     state: present
-    create_instance_profile: false
-    managed_policies:
+    managed_policy_arns:
       - AmazonEKSServicePolicy
       - AmazonEKSClusterPolicy
   register: _result_create_iam_role
@@ -39,7 +38,7 @@
   register: _result_create_igw
 
 - name: Set up public subnet route table
-  community.aws.ec2_vpc_route_table:
+  amazon.aws.ec2_vpc_route_table:
     vpc_id: "{{ _result_create_vpc.vpc.id }}"
     tags:
       Name: "Public"
@@ -60,7 +59,7 @@
   register: _result_create_nat_gateway
 
 - name: Set up NAT-protected route table
-  community.aws.ec2_vpc_route_table:
+  amazon.aws.ec2_vpc_route_table:
     vpc_id: '{{ _result_create_vpc.vpc.id }}'
     tags:
       Name: Internal
