@@ -142,7 +142,7 @@ def main():
     for scenario_dir in test_scenarios_dir.glob("*"):
         if not scenario_dir.is_dir():
             continue
-        if "setup_remote_tmp_dir" in str(scenario_dir):
+        if scenario_dir.name.startswith("setup_"):
             continue
         task_dir = scenario_dir / "tasks"
         tasks += get_tasks(task_dir)
