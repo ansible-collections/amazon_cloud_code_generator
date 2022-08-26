@@ -48,7 +48,8 @@ def test__format_documentation():
     expected = """r'''
 module: logs_log_group
 short_description: Create and manage log groups
-description: Create and manage log groups.
+description:
+- Create and manage log groups.
 options:
     force:
         default: false
@@ -135,8 +136,8 @@ author: Ansible Cloud Team (@ansible-collections)
 version_added: 1.0.0
 requirements: []
 extends_documentation_fragment:
-- amazon.cloud.aws
-- amazon.cloud.ec2
+- amazon.aws.aws
+- amazon.aws.ec2
 '''"""
 
     schema = rm.generate_schema(json.dumps(raw_content))

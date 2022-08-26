@@ -264,7 +264,8 @@ class CloudControlResource(object):
         except self.client.exceptions.ResourceNotFoundException:
             if self.module.params.get("identifier"):
                 self.module.fail_json(
-                    f"You must specify both {*primary_identifier, } to create a new resource. The identifier parameter can only be used to manipulate an existing resource."
+                    f"""You must specify both {*primary_identifier, } to create a new resource.
+                        The identifier parameter can only be used to manipulate an existing resource."""
                 )
             results["changed"] |= self.create_resource(type_name, params)
         except (
@@ -442,7 +443,13 @@ class CloudControlResource(object):
         obj = None
 
         # Ignore createOnlyProperties that can be set only during resource creation
-        params = scrub_keys(params_to_set, create_only_params)
+        params = scrub_keys(
+            params_to_set,
+            [
+                snake_to_camel(elem, capitalize_first=True)
+                for elem in create_only_params
+            ],
+        )
 
         in_progress_requests = self.check_in_progress_requests(type_name, identifier)
 

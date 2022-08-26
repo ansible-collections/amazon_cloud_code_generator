@@ -1,7 +1,9 @@
 {
     "module": "logs_log_group",
     "author": "Ansible Cloud Team (@ansible-collections)",
-    "description": "Create and manage log groups.",
+    "description": [
+        "Create and manage log groups."
+    ],
     "short_description": "Create and manage log groups",
     "options": {
         "log_group_name": {
@@ -104,7 +106,7 @@
     "requirements": [],
     "version_added": "1.0.0",
     "extends_documentation_fragment": [
-        "amazon.cloud.aws",
-        "amazon.cloud.ec2"
+        "amazon.aws.aws",
+        "amazon.aws.ec2"
     ]
 }

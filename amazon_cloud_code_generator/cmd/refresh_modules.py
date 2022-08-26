@@ -251,15 +251,18 @@ def generate_schema(raw_content) -> Dict:
     schema: Dict[str, Schema] = json_content
 
     for key, value in schema.items():
-        if isinstance(value, list):
-            elems = []
-            for v in value:
-                if isinstance(v, list):
-                    elems.extend([camel_to_snake(p.split("/")[-1].strip()) for p in v])
-                else:
-                    elems.append(camel_to_snake(v.split("/")[-1].strip()))
+        if key != "anyOf":
+            if isinstance(value, list):
+                elems = []
+                for v in value:
+                    if isinstance(v, list):
+                        elems.extend(
+                            [camel_to_snake(p.split("/")[-1].strip()) for p in v]
+                        )
+                    else:
+                        elems.append(camel_to_snake(v.split("/")[-1].strip()))
 
-            schema[key] = elems
+                schema[key] = elems
 
     return schema
 
@@ -273,8 +276,9 @@ class AnsibleModule:
 
     def generate_module_name(self):
         splitted = self.schema.get("typeName").split("::")
-        list_to_str = "".join(map(str, splitted[1:]))
-        return camel_to_snake(list_to_str)
+        prefix = splitted[1].lower()
+        list_to_str = "".join(map(str, splitted[2:]))
+        return prefix + "_" + camel_to_snake(list_to_str)
 
     def is_trusted(self) -> bool:
         if get_module_from_config(self.name) is False:
@@ -379,6 +383,20 @@ def main():
             "plugins/modules/rdsdb_proxy.py",
             "plugins/modules/redshift_cluster.py",
             "plugins/modules/eks_cluster.py",
+            "plugins/modules/dynamodb_global_table.py",
+            "plugins/modules/kms_replica_key.py",
+            "plugins/modules/rds_db_proxy.py",
+            "plugins/modules/iam_server_certificate.py",
+            "plugins/modules/cloudtrail_trail.py",
+            "plugins/modules/route53_key_signing_key.py",
+            "plugins/modules/redshift_endpoint_authorization.py",
+            "plugins/modules/eks_fargate_profile.py",
+        ]
+        mutually_exclusive_skip = [
+            "plugins/modules/eks_addon.py",
+            "plugins/modules/eks_fargate_profile.py",
+            "plugins/modules/redshift_endpoint_authorization.py",
+            "plugins/modules/route53_key_signing_key.py",
         ]
 
         for f in module_utils:
@@ -391,25 +409,59 @@ def main():
 
             if f in validate_skip_needed:
                 if version in ["2.10", "2.11", "2.12", "2.13", "2.14"]:
-                    validate_skip_list = [
-                        "validate-modules:no-log-needed",
-                    ]
-                    for skip in validate_skip_list:
-                        per_version_ignore_content += f"{f} {skip}\n"
+                    if (
+                        f == "plugins/modules/redshift_endpoint_authorization.py"
+                        and version in ("2.11", "2.12", "2.13", "2.14")
+                    ):
+                        pass
+                    else:
+                        validate_skip_list = [
+                            "validate-modules:no-log-needed",
+                        ]
+                        for skip in validate_skip_list:
+                            per_version_ignore_content += f"{f} {skip}\n"
 
             if version in ["2.10", "2.11", "2.12", "2.13", "2.14"]:
                 per_version_ignore_content += (
                     f"{f} validate-modules:parameter-state-invalid-choice\n"
                 )
 
+        for f in mutually_exclusive_skip:
+            per_version_ignore_content += (
+                f"{f} validate-modules:mutually_exclusive-type\n"
+            )
+
         ignore_file = ignore_dir / f"ignore-{version}.txt"
         ignore_file.write_text(per_version_ignore_content)
 
     meta_dir = args.target_dir / "meta"
     meta_dir.mkdir(parents=True, exist_ok=True)
-    yaml_dict = {"requires_ansible": """>=2.9.10""", "action_groups": {"aws": []}}
+    yaml_dict = {
+        "requires_ansible": """>=2.9.10""",
+        "action_groups": {"aws": []},
+        "plugin_routing": {"modules": {}},
+    }
     for m in module_list:
         yaml_dict["action_groups"]["aws"].append(m)
+
+    yaml_dict["plugin_routing"]["modules"].update(
+        {
+            "rdsdb_proxy": {"redirect": "amazon.cloud.rds_db_proxy"},
+            "s3_object_lambda_access_point": {
+                "redirect": "amazon.cloud.s3objectlambda_access_point"
+            },
+            "s3_object_lambda_access_point_policy": {
+                "redirect": "amazon.cloud.s3objectlambda_access_point_policy"
+            },
+        }
+    )
+    yaml_dict["action_groups"]["aws"].extend(
+        [
+            "rdsdb_proxy",
+            "s3_object_lambda_access_point",
+            "s3_object_lambda_access_point_policy",
+        ]
+    )
 
     runtime_file = meta_dir / "runtime.yml"
     with open(runtime_file, "w") as file:

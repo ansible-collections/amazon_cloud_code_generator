@@ -245,7 +245,8 @@ def find_tag_by_key(key, tags):
 
 def tag_merge(t1, t2):
     for tag in t2:
-        if existing := find_tag_by_key(tag["Key"], t1):
+        existing = find_tag_by_key(tag["Key"], t1)
+        if existing:
             existing["Value"] = tag["Value"]
         else:
             t1.append(tag)

@@ -343,7 +343,7 @@
 - name: Assert result is changed
   assert:
     that:
-      -  _result_update_tags_fp.changed
+      - _result_update_tags_fp.changed
 
 - name: Try update tags again in Fargate Profile a without wait
   amazon.cloud.eks_fargate_profile:
@@ -364,7 +364,7 @@
 - name: Assert result is not changed
   assert:
     that:
-      -  _result_update_tags_fp.changed
+      - _result_update_tags_fp.changed
 
 - name: Create Fargate Profile b without wait (check mode)
   amazon.cloud.eks_fargate_profile:

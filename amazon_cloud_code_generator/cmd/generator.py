@@ -37,21 +37,20 @@ class Description:
     @classmethod
     def clean_up(cls, definitions: Iterable, my_string: str) -> str:
         values = set()
-        ignored_keys = set(
-            [
-                "JavaScript",
-                "EventBridge",
-                "CloudFormation",
-                "CloudWatch",
-                "ACLs",
-                "XMLHttpRequest",
-                "DDThh",
-                "ARNs",
-                "VPCs",
-                "AWS::EFS::MountTarget",
-            ]
-        )
-        ignored_values = set(["PUT", "S3"])
+        keys = set()
+
+        ignored_values = set(["PUT", "S3", "EC2"])
+
+        def get_keys(a_dict):
+            keys = []
+            if isinstance(a_dict, list):
+                for item in a_dict:
+                    keys.extend(get_keys(item))
+            elif isinstance(a_dict, dict):
+                for key in a_dict:
+                    keys.append(key)
+                    keys.extend(get_keys(a_dict[key]))
+            return keys
 
         def get_values(a_dict):
             for key, value in a_dict.items():
@@ -64,10 +63,12 @@ class Description:
         for value in get_values(definitions):
             values |= set(value)
 
+        keys = set(get_keys(definitions))
+
         def rewrite_name(matchobj):
             """Rewrite option name to I(camel_to_snake(option))"""
             name = matchobj.group(0)
-            if name not in ignored_keys:
+            if name in keys:
                 snake_name = camel_to_snake(name)
                 output = f"I({snake_name})"
                 return output
@@ -280,7 +281,7 @@ def generate_documentation(
         "options": {},
         "requirements": [],
         "version_added": added_ins["module"] or next_version,
-        "extends_documentation_fragment": ["amazon.cloud.aws", "amazon.cloud.ec2"],
+        "extends_documentation_fragment": ["amazon.aws.aws", "amazon.aws.ec2"],
     }
 
     docs = Documentation()
@@ -360,7 +361,7 @@ def generate_documentation(
         # https://docs.aws.amazon.com/cloudcontrolapi/latest/userguide/resource-identifier.html
         documentation["options"]["identifier"] = {
             "description": [
-                "For compound primary identifiers, to specify the primary identifier as a string, list each in the order that they are specified in the identifier list definition, separated by |.",
+                "For compound primary identifiers, to specify the primary identifier as a string, list each in the order that they are specified in the identifier list definition, separated by '|'.",
                 "For more details, visit U(https://docs.aws.amazon.com/cloudcontrolapi/latest/userguide/resource-identifier.html).",
             ],
             "type": "str",
