@@ -103,7 +103,6 @@
             "default": false
         }
     },
-    "requirements": [],
     "version_added": "1.0.0",
     "extends_documentation_fragment": [
         "amazon.aws.aws",
