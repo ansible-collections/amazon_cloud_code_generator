@@ -279,6 +279,7 @@ def generate_documentation(
         "description": [],
         "short_description": [],
         "options": {},
+        "requirements": ["boto3 >= 1.20.0", "botocore >= 1.23.0", "python >= 3.9", "jsonpatch"],
         "version_added": added_ins["module"] or next_version,
         "extends_documentation_fragment": ["amazon.aws.aws", "amazon.aws.ec2"],
     }
