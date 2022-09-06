@@ -279,7 +279,6 @@ def generate_documentation(
         "description": [],
         "short_description": [],
         "options": {},
-        "requirements": [],
         "version_added": added_ins["module"] or next_version,
         "extends_documentation_fragment": ["amazon.aws.aws", "amazon.aws.ec2"],
     }
