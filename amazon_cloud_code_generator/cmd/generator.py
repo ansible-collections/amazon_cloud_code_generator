@@ -280,7 +280,11 @@ def generate_documentation(
         "short_description": [],
         "options": {},
         "version_added": added_ins["module"] or next_version,
-        "extends_documentation_fragment": ["amazon.aws.aws", "amazon.aws.ec2", "amazon.cloud.boto3"],
+        "extends_documentation_fragment": [
+            "amazon.aws.aws",
+            "amazon.aws.ec2",
+            "amazon.cloud.boto3",
+        ],
     }
 
     docs = Documentation()

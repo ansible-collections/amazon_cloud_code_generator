@@ -29,11 +29,6 @@
 This module_utility adds shared support for AWS Cloud Control API modules.
 """
 
-from __future__ import absolute_import, division, print_function
-
-__metaclass__ = type
-
-
 import json
 import time
 import traceback
