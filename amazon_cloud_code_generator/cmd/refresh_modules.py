@@ -163,7 +163,7 @@ def ensure_all_identifiers_defined(schema: Dict) -> str:
     primary_idenfifier = schema.get("primaryIdentifier", [])
     new_content: str = "if state in ('present', 'absent', 'get', 'describe') and module.params.get('identifier') is None:\n"
     new_content += 8 * " "
-    new_content += f"if not  module.params.get('{primary_idenfifier[0]}')" + " ".join(
+    new_content += f"if not module.params.get('{primary_idenfifier[0]}')" + " ".join(
         map(lambda x: f" or not module.params.get('{x}')", primary_idenfifier[1:])
     )
     new_content += ":\n" + 12 * " "
@@ -437,7 +437,7 @@ def main():
     meta_dir = args.target_dir / "meta"
     meta_dir.mkdir(parents=True, exist_ok=True)
     yaml_dict = {
-        "requires_ansible": """>=2.9.10""",
+        "requires_ansible": """>=2.11.0""",
         "action_groups": {"aws": []},
         "plugin_routing": {"modules": {}},
     }
