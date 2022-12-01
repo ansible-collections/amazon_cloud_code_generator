@@ -164,47 +164,6 @@ def ensure_all_identifiers_defined(schema: Dict) -> str:
     return new_content
 
 
-def format_documentation(documentation: Iterable) -> str:
-    yaml.Dumper.ignore_aliases = lambda *args: True
-
-    def _sanitize(input):
-        if isinstance(input, str):
-            return input.replace("':'", ":")
-        if isinstance(input, list):
-            return [line.replace("':'", ":") for line in input]
-        if isinstance(input, dict):
-            return {k: _sanitize(v) for k, v in input.items()}
-        if isinstance(input, bool):
-            return input
-        raise TypeError
-
-    keys = [
-        "module",
-        "short_description",
-        "description",
-        "options",
-        "author",
-        "version_added",
-        "requirements",
-        "extends_documentation_fragment",
-        "seealso",
-        "notes",
-    ]
-
-    final: str = "r'''\n"
-    for i in keys:
-        if i not in documentation:
-            continue
-        if isinstance(documentation[i], str):
-            sanitized = _sanitize(documentation[i])
-        else:
-            sanitized = documentation[i]
-        final += yaml.dump({i: sanitized}, indent=4, default_flow_style=False)
-    final += "'''"
-
-    return final
-
-
 def generate_argument_spec(options: Dict) -> str:
     argument_spec: str = ""
     options_copy = copy.deepcopy(options)

@@ -5,3 +5,4 @@ pyyaml
 redbaron
 baron
 boto3
+git+https://github.com/ansible-collections/gouttelette
