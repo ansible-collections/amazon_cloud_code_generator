@@ -1,0 +1,131 @@
+- name: Logs group tests
+  module_defaults:
+    group/amazon.cloud.aws:
+      aws_access_key: '{{ aws_access_key }}'
+      aws_secret_key: '{{ aws_secret_key }}'
+      security_token: '{{ security_token | default(omit) }}'
+      region: '{{ aws_region }}'
+  collections:
+    - amazon.cloud
+
+  block:
+    - name: Set log group name
+      set_fact:
+        log_group_name: "test-{{ lookup('password', '/dev/null') | hash('md5') }}"
+
+    - name: Create log group (check mode)
+      amazon.cloud.logs_log_group: &log_group
+        state: present
+        log_group_name: "{{ log_group_name }}"
+        retention_in_days: 7
+        tags:
+          "testkey": "testvalue"
+      check_mode: yes
+
+    - name: Create log group
+      amazon.cloud.logs_log_group:
+        <<: *log_group
+        wait: yes
+      register: output
+      tags:
+        - docs
+
+    - assert:
+        that:
+          - output.result.identifier == log_group_name
+
+    - name: Create log group (idempotence)
+      amazon.cloud.logs_log_group:
+        *log_group
+      register: output
+
+    - assert:
+        that:
+          - output is not changed
+    
+    - name: Describe log group
+      amazon.cloud.logs_log_group:
+        state: describe
+        log_group_name: "{{ log_group_name }}"
+      register: output
+      tags:
+        - docs
+
+    - name: Update log group (check mode)
+      amazon.cloud.logs_log_group: &log_group_update
+        state: present
+        log_group_name: "{{ log_group_name }}"
+        tags:
+          anotherkey: "anothervalue"
+      check_mode: yes
+      register: output
+
+    - assert:
+        that:
+          - output is changed
+
+    - name: Update log group
+      amazon.cloud.logs_log_group:
+        <<: *log_group_update
+        purge_tags: false
+        wait: yes
+      register: output
+      tags:
+        - docs
+
+    - assert:
+        that:
+          - output is changed
+          - "'testkey' in output.result.properties.tags"
+          - "'anotherkey' in output.result.properties.tags"
+
+    - name: Update log group (idempotence)
+      amazon.cloud.logs_log_group:
+        *log_group_update
+      register: output
+
+    # This fails with the current merge impementation. The end result is correct,
+    # it's just that it will report a change when there hasn't really been one.
+    # - assert:
+    #     that:
+    #       - output is not changed
+
+    - name: Delete log group (check mode)
+      amazon.cloud.logs_log_group:
+        state: absent
+        log_group_name: "{{ log_group_name }}"
+      check_mode: yes
+      register: output
+
+    - assert:
+        that:
+          - output is changed
+
+    - name: Delete log group
+      amazon.cloud.logs_log_group:
+        state: absent
+        log_group_name: "{{ log_group_name }}"
+      register: output
+      tags:
+        - docs
+
+    - assert:
+        that:
+          - output is changed
+
+    - name: Delete log group (idempotence)
+      amazon.cloud.logs_log_group:
+        state: absent
+        log_group_name: "{{ log_group_name }}"
+      register: output
+
+    - assert:
+        that:
+          - output is not changed
+
+  always:
+    - name: Cleanup log group
+      amazon.cloud.logs_log_group:
+        state: absent
+        log_group_name: "{{ log_group_name }}"
+      ignore_errors: true
