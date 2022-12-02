@@ -11,20 +11,6 @@ import pkg_resources
 from typing import Dict, List
 
 
-def python_type(value) -> str:
-    TYPE_MAPPING = {
-        "array": "list",
-        "boolean": "bool",
-        "integer": "int",
-        "number": "int",
-        "object": "dict",
-        "string": "str",
-    }
-    if isinstance(value, list):
-        return TYPE_MAPPING.get(value[0], value)
-    return TYPE_MAPPING.get(value, value)
-
-
 def scrub_keys(a_dict: Dict, list_of_keys_to_remove: List) -> Dict:
     """Filter a_dict by removing unwanted keys: values listed in list_of_keys_to_remove"""
     if not isinstance(a_dict, dict):
@@ -113,13 +99,3 @@ def camel_to_snake(data: Dict):
             else:
                 b_dict[_camel_to_snake(k)] = data[k]
         return b_dict
-
-
-def get_module_from_config(module: str):
-    raw_content = pkg_resources.resource_string(
-        "amazon_cloud_code_generator", "config/modules.yaml"
-    )
-    for i in yaml.safe_load(raw_content):
-        if module in i:
-            return i[module]
-    return False

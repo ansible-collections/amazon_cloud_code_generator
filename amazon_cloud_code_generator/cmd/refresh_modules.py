@@ -16,11 +16,26 @@ import json
 import traceback
 import copy
 
+from gouttelette.utils import (
+    format_documentation,
+    indent,
+    UtilsBase,
+    get_module_from_config,
+)
+
+BOTO3_IMP_ERR = None
+try:
+    import boto3
+
+    HAS_BOTO3 = True
+except ImportError:
+    BOTO3_IMP_ERR = traceback.format_exc()
+    HAS_BOTO3 = False
+
 from typing import Dict, Iterable, List, Optional, TypedDict
 
 from .resources import RESOURCES
 from .generator import generate_documentation
-from .utils import get_module_from_config
 from .utils import camel_to_snake
 from .utils import ignore_description
 
@@ -89,16 +104,6 @@ def jinja2_renderer(template_file, **kwargs):
     templateEnv = jinja2.Environment(loader=templateLoader)
     template = templateEnv.get_template(template_file)
     return template.render(kwargs)
-
-
-def indent(text_block: str, indent: int = 0) -> str:
-    result: str = ""
-
-    for line in text_block.split("\n"):
-        result += " " * indent
-        result += line
-        result += "\n"
-    return result
 
 
 def generate_params(definitions: Iterable) -> str:
@@ -180,10 +185,51 @@ def generate_argument_spec(options: Dict) -> str:
     return argument_spec
 
 
+<<<<<<< HEAD
 class AnsibleModule:
+=======
+class Schema(TypedDict):
+    """A type for the JSONSchema spec"""
+
+    typeName: str
+    description: str
+    properties: Dict
+    definitions: Optional[Dict]
+    required: Optional[List]
+    primaryIdentifier: List
+    readOnlyProperties: Optional[List]
+    createOnlyProperties: Optional[List]
+    taggable: Optional[bool]
+    handlers: Optional[Dict]
+
+
+def generate_schema(raw_content) -> Dict:
+    json_content = json.loads(raw_content)
+    schema: Dict[str, Schema] = json_content
+
+    for key, value in schema.items():
+        if key != "anyOf":
+            if isinstance(value, list):
+                elems = []
+                for v in value:
+                    if isinstance(v, list):
+                        elems.extend(
+                            [camel_to_snake(p.split("/")[-1].strip()) for p in v]
+                        )
+                    else:
+                        elems.append(camel_to_snake(v.split("/")[-1].strip()))
+
+                schema[key] = elems
+
+    return schema
+
+
+class AnsibleModule(UtilsBase):
+>>>>>>> c53bd24 (Moved more functions)
     template_file = "default_module.j2"
 
     def __init__(self, schema: Iterable):
+        super(AnsibleModule, self).__init__()
         self.schema = schema
         self.name = self.generate_module_name()
 
@@ -192,18 +238,6 @@ class AnsibleModule:
         prefix = splitted[1].lower()
         list_to_str = "".join(map(str, splitted[2:]))
         return prefix + "_" + camel_to_snake(list_to_str)
-
-    def is_trusted(self) -> bool:
-        if get_module_from_config(self.name) is False:
-            print(f"- do not build: {self.name}")
-        else:
-            return True
-
-    def write_module(self, target_dir: str, content: str):
-        module_dir = target_dir / "plugins" / "modules"
-        module_dir.mkdir(parents=True, exist_ok=True)
-        module_py_file = module_dir / "{name}.py".format(name=self.name)
-        module_py_file.write_text(content)
 
     def renderer(self, target_dir: str, next_version: str):
         added_ins = get_module_added_ins(self.name, git_dir=target_dir / ".git")
@@ -267,7 +301,7 @@ def main():
 
         module = AnsibleModule(schema=schema)
 
-        if module.is_trusted():
+        if module.is_trusted("amazon_cloud_code_generator"):
             module.renderer(target_dir=args.target_dir, next_version=args.next_version)
             module_list.append(module.name)
 
