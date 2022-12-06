@@ -13,14 +13,6 @@ import amazon_cloud_code_generator.cmd.utils as ut
 import pytest
 
 
-def test__python_type():
-    assert ut.python_type("object") == "dict"
-    assert ut.python_type("string") == "str"
-    assert ut.python_type("array") == "list"
-    assert ut.python_type("list") == "list"
-    assert ut.python_type("boolean") == "bool"
-
-
 options = {
     "ManagedPolicyArns": {
         "description": [
