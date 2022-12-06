@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import amazon_cloud_code_generator.cmd.refresh_modules as rm
+import amazon_cloud_code_generator.cmd.refresh_schema as rs
 import amazon_cloud_code_generator.cmd.generator as g
 
 
@@ -23,7 +24,7 @@ def test__gen_required_if():
         ["state", "absent", ["log_group_name"], True],
         ["state", "get", ["log_group_name"], True],
     ]
-    schema = rm.generate_schema(json.dumps(raw_content))
+    schema = rs.generate_schema(json.dumps(raw_content))
     assert rm.gen_required_if(schema) == expected_required_if
 
 
@@ -33,7 +34,7 @@ params['kms_key_id'] = module.params.get('kms_key_id')
 params['log_group_name'] = module.params.get('log_group_name')
 params['retention_in_days'] = module.params.get('retention_in_days')
 params['tags'] = module.params.get('tags')"""
-    schema = rm.generate_schema(json.dumps(raw_content))
+    schema = rs.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     added_ins = {"module": "1.0.0"}
     documentation = g.generate_documentation(
@@ -139,7 +140,7 @@ extends_documentation_fragment:
 - amazon.aws.ec2
 '''"""
 
-    schema = rm.generate_schema(json.dumps(raw_content))
+    schema = rs.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     added_ins = {"module": "1.0.0"}
     documentation = g.generate_documentation(
@@ -162,7 +163,7 @@ argument_spec['wait'] = {'type': 'bool', 'default': False}
 argument_spec['wait_timeout'] = {'type': 'int', 'default': 320}
 argument_spec['force'] = {'type': 'bool', 'default': False}
 argument_spec['purge_tags'] = {'type': 'bool', 'default': True}"""
-    schema = rm.generate_schema(json.dumps(raw_content))
+    schema = rs.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     added_ins = {"module": "1.0.0"}
     documentation = g.generate_documentation(
@@ -175,13 +176,13 @@ argument_spec['purge_tags'] = {'type': 'bool', 'default': True}"""
 
 
 def test_AnsibleModule():
-    schema = rm.generate_schema(json.dumps(raw_content))
+    schema = rs.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     assert module.name == "logs_log_group"
 
 
 def test_AnsibleModuleBase_is_trusted():
-    schema = rm.generate_schema(json.dumps(raw_content))
+    schema = rs.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
     assert module.is_trusted()
     module.name = "something_we_dont_trust"
