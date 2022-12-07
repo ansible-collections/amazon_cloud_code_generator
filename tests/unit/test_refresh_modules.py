@@ -191,6 +191,6 @@ def test_AnsibleModule():
 def test_AnsibleModuleBase_is_trusted():
     schema = rs.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModule(schema=schema)
-    assert module.is_trusted()
+    assert module.is_trusted("amazon_cloud_code_generator")
     module.name = "something_we_dont_trust"
-    assert not module.is_trusted()
+    assert not module.is_trusted("amazon_cloud_code_generator")

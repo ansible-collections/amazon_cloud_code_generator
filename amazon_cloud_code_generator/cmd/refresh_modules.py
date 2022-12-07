@@ -16,11 +16,17 @@ import json
 import traceback
 import copy
 
+from gouttelette.utils import (
+    format_documentation,
+    indent,
+    UtilsBase,
+    get_module_from_config,
+)
+
 from typing import Dict, Iterable, List, Optional, TypedDict
 
 from .resources import RESOURCES
 from .generator import generate_documentation
-from .utils import get_module_from_config
 from .utils import camel_to_snake
 from .utils import ignore_description
 
@@ -91,16 +97,6 @@ def jinja2_renderer(template_file, **kwargs):
     return template.render(kwargs)
 
 
-def indent(text_block: str, indent: int = 0) -> str:
-    result: str = ""
-
-    for line in text_block.split("\n"):
-        result += " " * indent
-        result += line
-        result += "\n"
-    return result
-
-
 def generate_params(definitions: Iterable) -> str:
     params: str = ""
     keys = sorted(
@@ -164,47 +160,6 @@ def ensure_all_identifiers_defined(schema: Dict) -> str:
     return new_content
 
 
-def format_documentation(documentation: Iterable) -> str:
-    yaml.Dumper.ignore_aliases = lambda *args: True
-
-    def _sanitize(input):
-        if isinstance(input, str):
-            return input.replace("':'", ":")
-        if isinstance(input, list):
-            return [line.replace("':'", ":") for line in input]
-        if isinstance(input, dict):
-            return {k: _sanitize(v) for k, v in input.items()}
-        if isinstance(input, bool):
-            return input
-        raise TypeError
-
-    keys = [
-        "module",
-        "short_description",
-        "description",
-        "options",
-        "author",
-        "version_added",
-        "requirements",
-        "extends_documentation_fragment",
-        "seealso",
-        "notes",
-    ]
-
-    final: str = "r'''\n"
-    for i in keys:
-        if i not in documentation:
-            continue
-        if isinstance(documentation[i], str):
-            sanitized = _sanitize(documentation[i])
-        else:
-            sanitized = documentation[i]
-        final += yaml.dump({i: sanitized}, indent=4, default_flow_style=False)
-    final += "'''"
-
-    return final
-
-
 def generate_argument_spec(options: Dict) -> str:
     argument_spec: str = ""
     options_copy = copy.deepcopy(options)
@@ -221,7 +176,7 @@ def generate_argument_spec(options: Dict) -> str:
     return argument_spec
 
 
-class AnsibleModule:
+class AnsibleModule(UtilsBase):
     template_file = "default_module.j2"
 
     def __init__(self, schema: Iterable):
@@ -233,18 +188,6 @@ class AnsibleModule:
         prefix = splitted[1].lower()
         list_to_str = "".join(map(str, splitted[2:]))
         return prefix + "_" + camel_to_snake(list_to_str)
-
-    def is_trusted(self) -> bool:
-        if get_module_from_config(self.name) is False:
-            print(f"- do not build: {self.name}")
-        else:
-            return True
-
-    def write_module(self, target_dir: str, content: str):
-        module_dir = target_dir / "plugins" / "modules"
-        module_dir.mkdir(parents=True, exist_ok=True)
-        module_py_file = module_dir / "{name}.py".format(name=self.name)
-        module_py_file.write_text(content)
 
     def renderer(self, target_dir: str, next_version: str):
         added_ins = get_module_added_ins(self.name, git_dir=target_dir / ".git")
@@ -308,7 +251,7 @@ def main():
 
         module = AnsibleModule(schema=schema)
 
-        if module.is_trusted():
+        if module.is_trusted("amazon_cloud_code_generator"):
             module.renderer(target_dir=args.target_dir, next_version=args.next_version)
             module_list.append(module.name)
 

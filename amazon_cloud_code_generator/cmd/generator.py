@@ -7,11 +7,13 @@
 import copy
 import re
 from typing import Iterable, List, Dict
+from gouttelette.utils import (
+    python_type,
+    get_module_from_config,
+)
 
-from .utils import python_type
 from .utils import scrub_keys
 from .utils import camel_to_snake
-from .utils import get_module_from_config
 from .utils import ensure_description
 
 
@@ -370,7 +372,9 @@ def generate_documentation(
             "type": "str",
         }
 
-    module_from_config = get_module_from_config(module_name)
+    module_from_config = get_module_from_config(
+        module_name, "amazon_cloud_code_generator"
+    )
     if module_from_config and "documentation" in module_from_config:
         for k, v in module_from_config["documentation"].items():
             documentation[k] = v
