@@ -21,6 +21,7 @@ from gouttelette.utils import (
     indent,
     UtilsBase,
     get_module_from_config,
+    jinja2_renderer,
 )
 
 from typing import Dict, Iterable, List, Optional, TypedDict
