@@ -23,15 +23,6 @@ from gouttelette.utils import (
     get_module_from_config,
 )
 
-BOTO3_IMP_ERR = None
-try:
-    import boto3
-
-    HAS_BOTO3 = True
-except ImportError:
-    BOTO3_IMP_ERR = traceback.format_exc()
-    HAS_BOTO3 = False
-
 from typing import Dict, Iterable, List, Optional, TypedDict
 
 from .resources import RESOURCES
@@ -185,47 +176,7 @@ def generate_argument_spec(options: Dict) -> str:
     return argument_spec
 
 
-<<<<<<< HEAD
-class AnsibleModule:
-=======
-class Schema(TypedDict):
-    """A type for the JSONSchema spec"""
-
-    typeName: str
-    description: str
-    properties: Dict
-    definitions: Optional[Dict]
-    required: Optional[List]
-    primaryIdentifier: List
-    readOnlyProperties: Optional[List]
-    createOnlyProperties: Optional[List]
-    taggable: Optional[bool]
-    handlers: Optional[Dict]
-
-
-def generate_schema(raw_content) -> Dict:
-    json_content = json.loads(raw_content)
-    schema: Dict[str, Schema] = json_content
-
-    for key, value in schema.items():
-        if key != "anyOf":
-            if isinstance(value, list):
-                elems = []
-                for v in value:
-                    if isinstance(v, list):
-                        elems.extend(
-                            [camel_to_snake(p.split("/")[-1].strip()) for p in v]
-                        )
-                    else:
-                        elems.append(camel_to_snake(v.split("/")[-1].strip()))
-
-                schema[key] = elems
-
-    return schema
-
-
 class AnsibleModule(UtilsBase):
->>>>>>> c53bd24 (Moved more functions)
     template_file = "default_module.j2"
 
     def __init__(self, schema: Iterable):
