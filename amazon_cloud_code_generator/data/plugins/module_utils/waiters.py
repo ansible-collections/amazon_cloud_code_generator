@@ -1,9 +1,6 @@
 # Copyright: (c) 2022, Ansible Project
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import absolute_import, division, print_function
-
-__metaclass__ = type
 
 import copy
 
@@ -12,8 +9,8 @@ try:
 except ImportError:
     pass  # caught by HAS_BOTO3
 
-from ansible_collections.amazon.aws.plugins.module_utils.modules import (
-    _RetryingBotoClientWrapper,
+from ansible_collections.amazon.aws.plugins.module_utils.retries import (
+    RetryingBotoClientWrapper,
 )
 
 
@@ -94,7 +91,7 @@ waiters_by_name = {
 
 
 def get_waiter(client, waiter_name):
-    if isinstance(client, _RetryingBotoClientWrapper):
+    if isinstance(client, RetryingBotoClientWrapper):
         return get_waiter(client.client, waiter_name)
     try:
         return waiters_by_name[(client.__class__.__name__, waiter_name)](client)
