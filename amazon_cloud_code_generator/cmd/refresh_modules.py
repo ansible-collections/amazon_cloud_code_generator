@@ -180,7 +180,6 @@ class AnsibleModule(UtilsBase):
     template_file = "default_module.j2"
 
     def __init__(self, schema: Iterable):
-        super(AnsibleModule, self).__init__()
         self.schema = schema
         self.name = self.generate_module_name()
 
