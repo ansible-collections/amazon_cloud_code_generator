@@ -17,6 +17,7 @@ import traceback
 import copy
 
 from gouttelette.utils import (
+    jinja2_renderer,
     format_documentation,
     indent,
     UtilsBase,
@@ -88,13 +89,6 @@ def get_module_added_ins(module_name: str, git_dir: str) -> Dict:
                     added_ins["options"][option] = tag
 
     return added_ins
-
-
-def jinja2_renderer(template_file, **kwargs):
-    templateLoader = jinja2.PackageLoader("amazon_cloud_code_generator")
-    templateEnv = jinja2.Environment(loader=templateLoader)
-    template = templateEnv.get_template(template_file)
-    return template.render(kwargs)
 
 
 def generate_params(definitions: Iterable) -> str:
