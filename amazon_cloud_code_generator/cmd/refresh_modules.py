@@ -195,6 +195,7 @@ class AnsibleModule(UtilsBase):
         documentation_to_string = format_documentation(documentation)
         content = jinja2_renderer(
             self.template_file,
+            "amazon_cloud_code_generator",
             arguments=indent(arguments, 4),
             documentation=documentation_to_string,
             name=self.name,
