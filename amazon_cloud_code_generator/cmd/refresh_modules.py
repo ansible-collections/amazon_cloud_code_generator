@@ -21,6 +21,7 @@ from gouttelette.utils import (
     indent,
     UtilsBase,
     get_module_from_config,
+    jinja2_renderer,
 )
 
 from typing import Dict, Iterable, List, Optional, TypedDict
@@ -88,13 +89,6 @@ def get_module_added_ins(module_name: str, git_dir: str) -> Dict:
                     added_ins["options"][option] = tag
 
     return added_ins
-
-
-def jinja2_renderer(template_file, **kwargs):
-    templateLoader = jinja2.PackageLoader("amazon_cloud_code_generator")
-    templateEnv = jinja2.Environment(loader=templateLoader)
-    template = templateEnv.get_template(template_file)
-    return template.render(kwargs)
 
 
 def generate_params(definitions: Iterable) -> str:
@@ -201,6 +195,7 @@ class AnsibleModule(UtilsBase):
         documentation_to_string = format_documentation(documentation)
         content = jinja2_renderer(
             self.template_file,
+            "amazon_cloud_code_generator",
             arguments=indent(arguments, 4),
             documentation=documentation_to_string,
             name=self.name,
