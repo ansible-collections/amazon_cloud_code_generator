@@ -240,8 +240,9 @@ def main():
     module_list = []
 
     for type_name in RESOURCES:
-        print(f"Generating modules {type_name}")
-        schema_file = args.schema_dir / f"{type_name}.json"
+        file_name = re.sub('::', '_', type_name)
+        print(f"Generating modules {file_name}")
+        schema_file = args.schema_dir / f"{file_name}.json"
         schema = json.loads(schema_file.read_text())
 
         module = AnsibleModule(schema=schema)

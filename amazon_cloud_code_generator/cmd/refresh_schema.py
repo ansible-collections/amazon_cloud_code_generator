@@ -1,5 +1,6 @@
 import argparse
 import pathlib
+import re
 from typing import Dict, Iterable, List, Optional, TypedDict
 import boto3
 from .resources import RESOURCES
@@ -60,7 +61,10 @@ def main() -> None:
         cloudformation = CloudFormationWrapper(boto3.client("cloudformation"))
         raw_content = cloudformation.generate_docs(type_name)
         schema = generate_schema(raw_content)
-        schema_file = args.schema_dir / f"{type_name}.json"
+        file_name = re.sub('::', '_', type_name)
+        if not args.schema_dir.exists():
+            pathlib.Path(args.schema_dir).mkdir(parents=True, exist_ok=True)
+        schema_file = args.schema_dir / f"{file_name}.json"
         schema_file.write_text(json.dumps(schema, indent=2))
 
 
