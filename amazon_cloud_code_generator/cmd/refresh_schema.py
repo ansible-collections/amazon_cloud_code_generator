@@ -61,7 +61,7 @@ def main() -> None:
         raw_content = cloudformation.generate_docs(type_name)
         schema = generate_schema(raw_content)
         schema_file = args.schema_dir / f"{type_name}.json"
-        schema_file.write_text(json.dumps(schema))
+        schema_file.write_text(json.dumps(schema, indent=2))
 
 
 if __name__ == "__main__":
