@@ -11,10 +11,9 @@ from pbr.version import VersionInfo
 import baron
 import redbaron
 import yaml
-import jinja2
 import json
-import traceback
 import copy
+import re
 
 from gouttelette.utils import (
     jinja2_renderer,
@@ -240,7 +239,7 @@ def main():
     module_list = []
 
     for type_name in RESOURCES:
-        file_name = re.sub('::', '_', type_name)
+        file_name = re.sub("::", "_", type_name)
         print(f"Generating modules {file_name}")
         schema_file = args.schema_dir / f"{file_name}.json"
         schema = json.loads(schema_file.read_text())
