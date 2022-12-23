@@ -37,7 +37,9 @@ from typing import Iterable, List, Dict, Optional, Union
 
 from ansible_collections.amazon.aws.plugins.module_utils.ec2 import AWSRetry
 from ansible_collections.amazon.aws.plugins.module_utils.core import AnsibleAWSModule
-from ansible_collections.amazon.aws.plugins.module_utils.common import set_collection_info
+from ansible_collections.amazon.aws.plugins.module_utils.common import (
+    set_collection_info,
+)
 from .utils import (
     normalize_response,
     scrub_keys,
@@ -68,7 +70,6 @@ AMAZON_CLOUD_COLLECTION_VERSION = "0.2.0"
 
 
 class AnsibleAmazonCloudModule(AnsibleAWSModule):
-
     def __init__(self, **kwargs):
 
         super(AnsibleAmazonCloudModule, self).__init__(**kwargs)
