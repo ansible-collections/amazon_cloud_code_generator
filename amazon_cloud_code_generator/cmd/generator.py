@@ -6,6 +6,8 @@
 
 import copy
 import re
+from pathlib import Path
+
 from typing import Iterable, List, Dict
 from gouttelette.utils import (
     python_type,
@@ -373,7 +375,7 @@ def generate_documentation(
         }
 
     module_from_config = get_module_from_config(
-        module_name, "amazon_cloud_code_generator"
+        module_name,  Path("amazon_cloud_code_generator/config/")
     )
     if module_from_config and "documentation" in module_from_config:
         for k, v in module_from_config["documentation"].items():

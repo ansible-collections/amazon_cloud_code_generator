@@ -14,6 +14,7 @@ import yaml
 import json
 import copy
 import re
+from pathlib import Path
 
 from gouttelette.utils import (
     jinja2_renderer,
@@ -194,7 +195,6 @@ class AnsibleModule(UtilsBase):
         documentation_to_string = format_documentation(documentation)
         content = jinja2_renderer(
             self.template_file,
-            "amazon_cloud_code_generator",
             arguments=indent(arguments, 4),
             documentation=documentation_to_string,
             name=self.name,
@@ -246,7 +246,7 @@ def main():
 
         module = AnsibleModule(schema=schema)
 
-        if module.is_trusted("amazon_cloud_code_generator"):
+        if module.is_trusted(Path("amazon_cloud_code_generator/config/")):
             module.renderer(target_dir=args.target_dir, next_version=args.next_version)
             module_list.append(module.name)
 
