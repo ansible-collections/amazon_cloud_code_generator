@@ -5,7 +5,6 @@
 
 
 import os
-import pytest
 import json
 from pathlib import Path
 

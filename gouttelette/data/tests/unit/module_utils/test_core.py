@@ -1,4 +1,3 @@
-import json
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -36,7 +35,6 @@ def ccr():
 #     changed = ccr.present("AWS::S3::Bucket", "test_bucket", params)
 #     assert changed
 #     ccr.client.create_resource.assert_called_with(
-#         TypeName="AWS::S3::Bucket", DesiredState=json.dumps(params)
 #     )
 #     ccr.client.update_resource.assert_not_called()
 

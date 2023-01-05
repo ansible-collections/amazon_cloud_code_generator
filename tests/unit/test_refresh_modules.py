@@ -5,7 +5,6 @@
 
 
 import os
-import pytest
 import json
 from pathlib import Path
 
@@ -194,6 +193,10 @@ def test_AnsibleModuleBaseAmazon():
 def test_AnsibleModuleBase_is_trusted():
     schema = rs.generate_schema(json.dumps(raw_content))
     module = rm.AnsibleModuleBaseAmazon(schema=schema)
-    assert module.is_trusted(Path(os.path.dirname(os.path.abspath(__file__)) + "/fixtures"))
+    assert module.is_trusted(
+        Path(os.path.dirname(os.path.abspath(__file__)) + "/fixtures")
+    )
     module.name = "something_we_dont_trust"
-    assert not module.is_trusted(Path(os.path.dirname(os.path.abspath(__file__)) + "/fixtures"))
+    assert not module.is_trusted(
+        Path(os.path.dirname(os.path.abspath(__file__)) + "/fixtures")
+    )
