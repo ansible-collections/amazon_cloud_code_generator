@@ -1,0 +1,6 @@
+---
+- logs_log_group:
+    documentation:
+      short_description: Create and manage log groups
+      description:
+        - Create and manage log groups.

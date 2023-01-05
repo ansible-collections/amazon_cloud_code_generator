@@ -9,9 +9,9 @@ import pytest
 import json
 from pathlib import Path
 
-import amazon_cloud_code_generator.cmd.refresh_modules as rm
-import amazon_cloud_code_generator.cmd.refresh_schema as rs
-import amazon_cloud_code_generator.cmd.generator as g
+import gouttelette.cmd.refresh_modules as rm
+import gouttelette.cmd.refresh_schema as rs
+import gouttelette.cmd.generator as g
 
 
 def resources(filepath):
@@ -41,12 +41,13 @@ params['log_group_name'] = module.params.get('log_group_name')
 params['retention_in_days'] = module.params.get('retention_in_days')
 params['tags'] = module.params.get('tags')"""
     schema = rs.generate_schema(json.dumps(raw_content))
-    module = rm.AnsibleModule(schema=schema)
+    module = rm.AnsibleModuleBaseAmazon(schema=schema)
     added_ins = {"module": "1.0.0"}
     documentation = g.generate_documentation(
         module,
         added_ins,
         "",
+        Path(os.path.dirname(os.path.abspath(__file__)) + "/fixtures"),
     )
     assert rm.generate_params(documentation["options"]) == expected_params
 
@@ -148,12 +149,13 @@ extends_documentation_fragment:
 '''"""
 
     schema = rs.generate_schema(json.dumps(raw_content))
-    module = rm.AnsibleModule(schema=schema)
+    module = rm.AnsibleModuleBaseAmazon(schema=schema)
     added_ins = {"module": "1.0.0"}
     documentation = g.generate_documentation(
         module,
         added_ins,
         "1.0.0",
+        Path(os.path.dirname(os.path.abspath(__file__)) + "/fixtures"),
     )
 
     assert rm.format_documentation(documentation) == expected
@@ -171,26 +173,27 @@ argument_spec['wait_timeout'] = {'type': 'int', 'default': 320}
 argument_spec['force'] = {'type': 'bool', 'default': False}
 argument_spec['purge_tags'] = {'type': 'bool', 'default': True}"""
     schema = rs.generate_schema(json.dumps(raw_content))
-    module = rm.AnsibleModule(schema=schema)
+    module = rm.AnsibleModuleBaseAmazon(schema=schema)
     added_ins = {"module": "1.0.0"}
     documentation = g.generate_documentation(
         module,
         added_ins,
         "",
+        Path(os.path.dirname(os.path.abspath(__file__)) + "/fixtures"),
     )
 
     assert rm.generate_argument_spec(documentation["options"]) == expected_argument_spec
 
 
-def test_AnsibleModule():
+def test_AnsibleModuleBaseAmazon():
     schema = rs.generate_schema(json.dumps(raw_content))
-    module = rm.AnsibleModule(schema=schema)
+    module = rm.AnsibleModuleBaseAmazon(schema=schema)
     assert module.name == "logs_log_group"
 
 
 def test_AnsibleModuleBase_is_trusted():
     schema = rs.generate_schema(json.dumps(raw_content))
-    module = rm.AnsibleModule(schema=schema)
-    assert module.is_trusted("amazon_cloud_code_generator")
+    module = rm.AnsibleModuleBaseAmazon(schema=schema)
+    assert module.is_trusted(Path(os.path.dirname(os.path.abspath(__file__)) + "/fixtures"))
     module.name = "something_we_dont_trust"
-    assert not module.is_trusted("amazon_cloud_code_generator")
+    assert not module.is_trusted(Path(os.path.dirname(os.path.abspath(__file__)) + "/fixtures"))
