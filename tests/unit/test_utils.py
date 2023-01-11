@@ -5,7 +5,7 @@
 
 import pytest
 
-import amazon_cloud_code_generator.cmd.utils as ut
+import gouttelette.utils as ut
 
 
 options = {

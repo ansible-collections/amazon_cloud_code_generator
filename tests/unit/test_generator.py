@@ -5,13 +5,12 @@
 
 
 import os
-import pytest
 import json
 from pathlib import Path
 
-import amazon_cloud_code_generator.cmd.generator as g
-import amazon_cloud_code_generator.cmd.refresh_modules as rm
-import amazon_cloud_code_generator.cmd.refresh_schema as rs
+import gouttelette.cmd.generator as g
+import gouttelette.cmd.refresh_modules as rm
+import gouttelette.cmd.refresh_schema as rs
 
 
 def resources(filepath):
@@ -57,11 +56,12 @@ def test_Description_normalize():
 
 def test_generate_documentation():
     schema = rs.generate_schema(json.dumps(raw_content))
-    module = rm.AnsibleModule(schema=schema)
+    module = rm.AnsibleModuleBaseAmazon(schema=schema)
     added_ins = {"module": "1.0.0"}
     documentation = g.generate_documentation(
         module,
         added_ins,
         "1.0.0",
+        Path(os.path.dirname(os.path.abspath(__file__)) + "/fixtures"),
     )
     assert documentation == expected_content
