@@ -1,5 +1,8 @@
 # amazon_cloud_code_generator
 
+**IMPORTANT**
+The `amazon_cloud_code_generator` repository has been archived. Refer to the [`ansible.content_builder`](https://github.com/ansible-community/ansible.content_builder) instead.
+
 `amazon_cloud_code_generator` generates the [``amazon.cloud collection``](https://github.com/ansible-collections/amazon.cloud) from the CloudFormation Resource Type Definition Schema or meta-schema.
 
 ## Requirements
